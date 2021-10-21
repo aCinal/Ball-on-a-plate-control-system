@@ -36,7 +36,7 @@ typedef struct SBoapAcpMsg {
 } SBoapAcpMsg;
 
 PRIVATE const u8 s_macAddrLookupTable[][ESP_NOW_ETH_ALEN] = {
-    [BOAP_ACP_NODE_ID_PLANT] = { 0x08, 0x3a, 0xf2 },
+    [BOAP_ACP_NODE_ID_PLANT] = { 0x08, 0x3a, 0xf2, 0x99, 0x27, 0x41 },
     [BOAP_ACP_NODE_ID_CONTROLLER] = { 0x08, 0x3a, 0xf2, 0xab, 0xf7, 0x7d },
     [BOAP_ACP_NODE_ID_PC] = { 0x08, 0x3a, 0xf2, 0x9a, 0x06, 0xbd }
 };
@@ -602,18 +602,20 @@ PRIVATE void BoapAcpEspNowSendCallback(const u8 * macAddr, esp_now_send_status_t
 
 PRIVATE TBoapAcpNodeId BoapAcpMacAddrToNodeId(const u8 * macAddr) {
 
+    u32 ret = BOAP_ACP_NODE_ID_INVALID;
     u32 numberOfPeers = sizeof(s_macAddrLookupTable) / sizeof(s_macAddrLookupTable[0]);
-    u32 nodeId = BOAP_ACP_NODE_ID_INVALID;
+    u32 nodeId;
 
     for (nodeId = 0; nodeId < numberOfPeers; nodeId++) {
 
         if (0 == memcmp(macAddr, s_macAddrLookupTable[nodeId], ESP_NOW_ETH_ALEN)) {
 
+            ret = nodeId;
             break;
         }
     }
 
-    return nodeId;
+    return ret;
 }
 
 PRIVATE void BoapAcpGatewayThreadEntryPoint(void * arg) {

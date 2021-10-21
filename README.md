@@ -1,6 +1,6 @@
 # Ball-on-a-plate control system
 
-Distributed control system for a ball-on-a-plate system
+Distributed control application for an ESP32-based ball-on-a-plate system
 
 ## Usage
 
@@ -22,5 +22,5 @@ idf.py build
 4. Flash the board and monitor its startup
 
 ```bash
-idf.py -p <port> flash monitor
+idf.py -p (PORT) flash monitor
 ```
