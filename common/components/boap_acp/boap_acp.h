@@ -1,0 +1,147 @@
+/**
+ * @file boap_acp.h
+ * @author Adrian Cinal
+ * @brief File defining the interface of the AC Protocol
+ */
+
+#ifndef BOAP_ACP_H
+#define BOAP_ACP_H
+
+#include <boap_common.h>
+
+typedef u8 TBoapAcpNodeId;
+typedef u8 TBoapAcpPayloadSize;
+typedef u8 TBoapAcpMsgId;
+
+typedef enum EBoapAcpTxMessageDroppedReason {
+    EBoapAcpTxMessageDroppedReason_QueueStarvation = 0,
+    EBoapAcpTxMessageDroppedReason_EspNowSendFailed,
+    EBoapAcpTxMessageDroppedReason_MacLayerError,
+} EBoapAcpTxMessageDroppedReason;
+
+typedef enum EBoapAcpRxMessageDroppedReason {
+    EBoapAcpRxMessageDroppedReason_AllocationFailure = 0,
+    EBoapAcpRxMessageDroppedReason_QueueStarvation
+} EBoapAcpRxMessageDroppedReason;
+
+typedef void (* TBoapAcpTxMessageDroppedHook)(TBoapAcpNodeId receiver, EBoapAcpTxMessageDroppedReason reason);
+typedef void (* TBoapAcpRxMessageDroppedHook)(TBoapAcpNodeId sender, EBoapAcpRxMessageDroppedReason reason);
+
+#define BOAP_ACP_MSG_ID_INVALID      ( (TBoapAcpMsgId) 0xFF )
+
+#define BOAP_ACP_NODE_ID_PLANT       ( (TBoapAcpNodeId) 0x00 )
+#define BOAP_ACP_NODE_ID_CONTROLLER  ( (TBoapAcpNodeId) 0x01 )
+#define BOAP_ACP_NODE_ID_PC          ( (TBoapAcpNodeId) 0x02 )
+#define BOAP_ACP_NODE_ID_INVALID     ( (TBoapAcpNodeId) 0xFF )
+
+#define BOAP_ACP_WAIT_FOREVER        ( 0xFFFFFFFFU )
+
+/**
+ * @brief Initialize the ACP service
+ * @param rxQueueLen Length of the receive message queue
+ * @param txQueueLen Length of the transmit message queue
+ * @return Status
+ */
+EBoapRet BoapAcpInit(u32 rxQueueLen, u32 txQueueLen);
+
+/**
+ * @brief Get node ID of the caller
+ * @return Node ID of the caller
+ */
+TBoapAcpNodeId BoapAcpGetOwnNodeId(void);
+
+/**
+ * @brief Create an ACP message
+ * @param receiver Receiver's node ID
+ * @param msgId Message ID
+ * @param payloadSize Size of the message payload
+ * @return Message handle
+ */
+void * BoapAcpMsgCreate(TBoapAcpNodeId receiver, TBoapAcpMsgId msgId, TBoapAcpPayloadSize payloadSize);
+
+/**
+ * @brief Create a copy of an existing ACP message
+ * @param msg Original message handle
+ * @return Copy handle
+ */
+void * BoapAcpMsgCreateCopy(void * msg);
+
+/**
+ * @brief Get the message payload
+ * @param msg Message handle
+ * @return Pointer to the beginning of the message payload
+ */
+void * BoapAcpMsgGetPayload(void * msg);
+
+/**
+ * @brief Get the message payload size
+ * @param msg Message handle
+ * @return Payload size
+ */
+TBoapAcpPayloadSize BoapAcpMsgGetPayloadSize(void * msg);
+
+/**
+ * @brief Get the message bulk size
+ * @param msg Message handle
+ * @return Bulk size
+ */
+u32 BoapAcpMsgGetBulkSize(void * msg);
+
+/**
+ * @brief Get the message ID
+ * @param msg Message handle
+ * @return Message ID
+ */
+TBoapAcpMsgId BoapAcpMsgGetId(void * msg);
+
+/**
+ * @brief Get the sender node ID
+ * @param msg Message handle
+ * @return Sender node ID
+ */
+TBoapAcpNodeId BoapAcpMsgGetSender(void * msg);
+
+/**
+ * @brief Get the receiver node ID
+ * @param msg Message handle
+ * @return Receiver node ID
+ */
+TBoapAcpNodeId BoapAcpMsgGetReceiver(void * msg);
+
+/**
+ * @brief Send an ACP message
+ * @param msg Message handle
+ */
+void BoapAcpMsgSend(void * msg);
+
+/**
+ * @brief Destroy an ACP message
+ * @param msg Message handle
+ */
+void BoapAcpMsgDestroy(void * msg);
+
+/**
+ * @brief Receive an ACP message addressed to this node
+ * @param timeout Timeout in milliseconds
+ * @return Message handle
+ */
+void * BoapAcpMsgReceive(u32 timeout);
+
+/**
+ * @brief Register a hook to be called on TX message dropped event
+ * @param hook
+ */
+void BoapAcpRegisterTxMessageDroppedHook(TBoapAcpTxMessageDroppedHook hook);
+
+/**
+ * @brief Register a hook to be called on RX message dropped event
+ * @param hook
+ */
+void BoapAcpRegisterRxMessageDroppedHook(TBoapAcpRxMessageDroppedHook hook);
+
+/**
+ * @brief Shut down the ACP service
+ */
+void BoapAcpDeinit(void);
+
+#endif /* BOAP_ACP_H */
