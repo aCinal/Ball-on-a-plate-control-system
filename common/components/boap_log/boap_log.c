@@ -19,6 +19,13 @@
 
 PRIVATE TBoapLogCommitCallback s_commitCallback = NULL;
 PRIVATE TBoapLogMessageTruncationHook s_messageTruncationHook = NULL;
+PRIVATE EBoapLogSeverityLevel s_severityThreshold = EBoapLogSeverityLevel_Info;  /* Ignore debug prints by default */
+PRIVATE const char * s_severityTags[] = {
+    [EBoapLogSeverityLevel_Debug] = "DBG",
+    [EBoapLogSeverityLevel_Info] = "INF",
+    [EBoapLogSeverityLevel_Warning] = "WRN",
+    [EBoapLogSeverityLevel_Error] = "ERR"
+};
 
 /**
  * @brief Register a callback invoked to commit the log message
@@ -46,41 +53,47 @@ PUBLIC void BoapLogRegisterMessageTruncationHook(TBoapLogMessageTruncationHook h
  */
 PUBLIC void BoapLogPrint(EBoapLogSeverityLevel severityLevel, const char * format, ...) {
 
-    static const char * severityTags[] = {
-        [EBoapLogSeverityLevel_Info] = "INF",
-        [EBoapLogSeverityLevel_Warning] = "WRN",
-        [EBoapLogSeverityLevel_Error] = "ERR",
-        [EBoapLogSeverityLevel_Debug] = "DBG"
-    };
-    char header[BOAP_LOG_HEADER_SIZE + 1U];
-    char payload[BOAP_LOG_MAX_PAYLOAD_SIZE + 1U];
-    char trailer[BOAP_LOG_TRAILER_SIZE + 1U];
+    if (severityLevel >= s_severityThreshold) {
 
-    /* Write the header */
-    (void) snprintf(header, sizeof(header), "<%010d> %s (%s): ", xTaskGetTickCount(), severityTags[severityLevel], pcTaskGetName(NULL));
+        char header[BOAP_LOG_HEADER_SIZE + 1U];
+        char payload[BOAP_LOG_MAX_PAYLOAD_SIZE + 1U];
+        char trailer[BOAP_LOG_TRAILER_SIZE + 1U];
 
-    /* Format the payload */
-    va_list ap;
-    va_start(ap, format);
-    size_t payloadLen = vsnprintf(payload, sizeof(payload), format, ap);
-    va_end(ap);
+        /* Write the header */
+        (void) snprintf(header, sizeof(header), "<%010d> %s (%s): ", xTaskGetTickCount(), s_severityTags[severityLevel], pcTaskGetName(NULL));
 
-    /* If the message is too long truncate it */
-    if (unlikely(payloadLen > BOAP_LOG_MAX_PAYLOAD_SIZE)) {
+        /* Format the payload */
+        va_list ap;
+        va_start(ap, format);
+        size_t payloadLen = vsnprintf(payload, sizeof(payload), format, ap);
+        va_end(ap);
 
-        if (NULL != s_messageTruncationHook) {
+        /* If the message is too long truncate it */
+        if (unlikely(payloadLen > BOAP_LOG_MAX_PAYLOAD_SIZE)) {
 
-            s_messageTruncationHook(payloadLen, payload);
+            if (NULL != s_messageTruncationHook) {
+
+                s_messageTruncationHook(payloadLen, payload);
+            }
+            payloadLen = BOAP_LOG_MAX_PAYLOAD_SIZE;
         }
-        payloadLen = BOAP_LOG_MAX_PAYLOAD_SIZE;
+
+        /* Write the trailer */
+        (void) snprintf(trailer, sizeof(trailer), "\n");
+
+        if (likely(NULL != s_commitCallback)) {
+
+            /* Commit the message */
+            s_commitCallback(BOAP_LOG_HEADER_SIZE + payloadLen + BOAP_LOG_TRAILER_SIZE, header, payload, trailer);
+        }
     }
+}
 
-    /* Write the trailer */
-    (void) snprintf(trailer, sizeof(trailer), "\n");
+/**
+ * @brief Set severity level threshold
+ * @param severityThreshold Severity level threshold. Logs of severity level lower than severityThreshold will not be printed
+ */
+void BoapLogSetSeverityThreshold(EBoapLogSeverityLevel severityThreshold) {
 
-    if (likely(NULL != s_commitCallback)) {
-
-        /* Commit the message */
-        s_commitCallback(BOAP_LOG_HEADER_SIZE + payloadLen + BOAP_LOG_TRAILER_SIZE, header, payload, trailer);
-    }
+    s_severityThreshold = severityThreshold;
 }

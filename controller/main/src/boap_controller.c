@@ -8,6 +8,7 @@
 #include <boap_touchscreen.h>
 #include <boap_acp.h>
 #include <boap_messages.h>
+#include <boap_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <esp_timer.h>
@@ -45,6 +46,9 @@
 PRIVATE SBoapTouchscreen * s_touchscreenHandle = NULL;
 PRIVATE esp_timer_handle_t s_timerHandle;
 
+PRIVATE void BoapControllerLogCommitCallback(u32 len, const char * header, const char * payload, const char * trailer);
+PRIVATE void BoapControllerAcpTxMessageDroppedHook(TBoapAcpNodeId receiver, EBoapAcpTxMessageDroppedReason reason);
+PRIVATE void BoapControllerAcpRxMessageDroppedHook(TBoapAcpNodeId sender, EBoapAcpRxMessageDroppedReason reason);
 PRIVATE void BoapControllerMessageHandlerThreadEntryPoint(void * arg);
 PRIVATE void BoapControllerTimerCallback(void * arg);
 
@@ -56,6 +60,13 @@ PUBLIC EBoapRet BoapControllerInit(void) {
 
     EBoapRet status = EBoapRet_Ok;
     TaskHandle_t messageHandlerThreadHandle;
+
+    /* Register hooks */
+    BoapLogRegisterCommitCallback(BoapControllerLogCommitCallback);
+    BoapAcpRegisterTxMessageDroppedHook(BoapControllerAcpTxMessageDroppedHook);
+    BoapAcpRegisterRxMessageDroppedHook(BoapControllerAcpRxMessageDroppedHook);
+
+    BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): Application startup in progress. Instantiating the touchscreen object...", __FUNCTION__);
 
     /* Instantiate the touchscreen object */
     s_touchscreenHandle = BoapTouchscreenCreate(BOAP_CONTROLLER_SCREEN_DIMENSION_X_AXIS_MM,
@@ -71,22 +82,35 @@ PUBLIC EBoapRet BoapControllerInit(void) {
                                                 BOAP_CONTROLLER_ADC_MULTISAMPLING);
     if (unlikely(NULL == s_touchscreenHandle)) {
 
+        BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to instantiate the touchscreen object");
         status = EBoapRet_Error;
+
+    } else {
+
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "Touchscreen object created");
     }
 
     IF_OK(status) {
 
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "Initializing the ACP stack...");
         /* Initialize the ACP stack */
         if (unlikely(BoapAcpInit(BOAP_CONTROLLER_ACP_QUEUE_LEN, BOAP_CONTROLLER_ACP_QUEUE_LEN))) {
 
+            BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to initialize the ACP stack");
+            /* Cleanup */
             BoapTouchscreenDestroy(s_touchscreenHandle);
             status = EBoapRet_Error;
+
+        } else {
+
+            BoapLogPrint(EBoapLogSeverityLevel_Info, "ACP stack successfully initialized. Own node ID is 0x%02X", BoapAcpGetOwnNodeId());
         }
     }
 
     IF_OK(status) {
 
-        /* Create the message handler task */
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "Creating the message handler thread...");
+        /* Create the message handler thread */
         if (unlikely(pdPASS != xTaskCreatePinnedToCore(BoapControllerMessageHandlerThreadEntryPoint,
                                                         "MessageHandler",
                                                         BOAP_CONTROLLER_MESSAGE_HANDLER_THREAD_STACK_SIZE,
@@ -94,15 +118,22 @@ PUBLIC EBoapRet BoapControllerInit(void) {
                                                         BOAP_CONTROLLER_MESSAGE_HANDLER_THREAD_PRIORITY,
                                                         &messageHandlerThreadHandle,
                                                         BOAP_RT_CORE))) {
+
+            BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the message handler thread");
             /* Cleanup */
             BoapAcpDeinit();
             BoapTouchscreenDestroy(s_touchscreenHandle);
             status = EBoapRet_Error;
+
+        } else {
+
+            BoapLogPrint(EBoapLogSeverityLevel_Info, "Message handler thread created successfully");
         }
     }
 
     IF_OK(status) {
 
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "Creating the controller timer...");
         /* Create the timer */
         esp_timer_create_args_t timerArgs;
         timerArgs.callback = BoapControllerTimerCallback;
@@ -112,6 +143,7 @@ PUBLIC EBoapRet BoapControllerInit(void) {
         timerArgs.skip_unhandled_events = true;
         if (unlikely(ESP_OK != esp_timer_create(&timerArgs, &s_timerHandle))) {
 
+            BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the timer");
             /* Cleanup */
             vTaskDelete(messageHandlerThreadHandle);
             BoapAcpDeinit();
@@ -122,15 +154,34 @@ PUBLIC EBoapRet BoapControllerInit(void) {
 
             /* Start the timer */
             (void) esp_timer_start_periodic(s_timerHandle, BOAP_CONTROLLER_TIMER_PERIOD_US);
+            BoapLogPrint(EBoapLogSeverityLevel_Info, "Timer created and armed with period %llu. Controller startup complete", BOAP_CONTROLLER_TIMER_PERIOD_US);
         }
     }
 
     return status;
 }
 
+PRIVATE void BoapControllerLogCommitCallback(u32 len, const char * header, const char * payload, const char * trailer) {
+
+    (void) len;
+    (void) printf("%s%s%s", header, payload, trailer);
+}
+
+PRIVATE void BoapControllerAcpTxMessageDroppedHook(TBoapAcpNodeId receiver, EBoapAcpTxMessageDroppedReason reason) {
+
+    BoapLogPrint(EBoapLogSeverityLevel_Error, "Dropped outgoing ACP message to 0x%02X (reason: %d)", receiver, reason);
+}
+
+PRIVATE void BoapControllerAcpRxMessageDroppedHook(TBoapAcpNodeId sender, EBoapAcpRxMessageDroppedReason reason) {
+
+    BoapLogPrint(EBoapLogSeverityLevel_Error, "Dropped incoming ACP message fromo 0x%02X (reason: %d)", sender, reason);
+}
+
 PRIVATE void BoapControllerMessageHandlerThreadEntryPoint(void * arg) {
 
     (void) arg;
+
+    BoapLogPrint(EBoapLogSeverityLevel_Info, "Message handler thread entered on core %d", xPortGetCoreID());
 
     for ( ; /* ever */ ; ) {
 
@@ -170,7 +221,7 @@ PRIVATE void BoapControllerTimerCallback(void * arg) {
     if (BoapTouchscreenGetPosition(s_touchscreenHandle, EBoapAxis_X, &xPosition) && BoapTouchscreenGetPosition(s_touchscreenHandle, EBoapAxis_Y, &yPosition)) {
 
         /* If both axes register valid inputs, send new setpoint request to the plant */
-        void * newSetpointRequest = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_PLANT, BOAP_ACP_NEW_SETPOINT_REQ, sizeof(SBoapAcpNewSetpointReq));
+        void * newSetpointRequest = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_CONTROLLER, BOAP_ACP_NEW_SETPOINT_REQ, sizeof(SBoapAcpNewSetpointReq));
         if (likely(NULL != newSetpointRequest)) {
 
             SBoapAcpNewSetpointReq * payload = BoapAcpMsgGetPayload(newSetpointRequest);

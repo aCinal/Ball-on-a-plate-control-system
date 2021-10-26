@@ -20,8 +20,13 @@
 #define BOAP_ACP_WIFI_CHANNEL        1
 #define BOAP_ACP_MAX_PAYLOAD_SIZE    (ESP_NOW_MAX_DATA_LEN - sizeof(SBoapAcpHeader))
 
-#define BOAP_ACP_GATEWAY_STACK_SIZE  2 * 1024
+#define BOAP_ACP_GATEWAY_STACK_SIZE  4 * 1024
 #define BOAP_ACP_GATEWAY_PRIORITY    BOAP_PRIO_REALTIME
+
+#define BOAP_ACP_TRACE_MSG(MSG)  \
+    if (BoapAcpMsgGetId(MSG) == s_tracedMsgId && NULL != s_traceCallback) { \
+        s_traceCallback(MSG); \
+    }
 
 typedef struct SBoapAcpHeader {
     TBoapAcpMsgId msgId;
@@ -40,12 +45,14 @@ PRIVATE const u8 s_macAddrLookupTable[][ESP_NOW_ETH_ALEN] = {
     [BOAP_ACP_NODE_ID_CONTROLLER] = { 0x08, 0x3a, 0xf2, 0xab, 0xf7, 0x7d },
     [BOAP_ACP_NODE_ID_PC] = { 0x08, 0x3a, 0xf2, 0x9a, 0x06, 0xbd }
 };
-PRIVATE TBoapAcpNodeId s_ownId = BOAP_ACP_NODE_ID_INVALID;
+PRIVATE TBoapAcpNodeId s_ownNodeId = BOAP_ACP_NODE_ID_INVALID;
 PRIVATE QueueHandle_t s_rxQueueHandle = NULL;
 PRIVATE QueueHandle_t s_txQueueHandle = NULL;
 PRIVATE TaskHandle_t s_gatewayThreadHandle = NULL;
 PRIVATE TBoapAcpTxMessageDroppedHook s_txMessageDroppedHook = NULL;
 PRIVATE TBoapAcpRxMessageDroppedHook s_rxMessageDroppedHook = NULL;
+PRIVATE TBoapAcpMsgId s_tracedMsgId = BOAP_ACP_NODE_ID_INVALID;
+PRIVATE TBoapAcpTraceCallback s_traceCallback = NULL;
 
 PRIVATE EBoapRet BoapAcpNvsInit(void);
 PRIVATE EBoapRet BoapAcpWiFiInit(void);
@@ -97,9 +104,9 @@ PUBLIC EBoapRet BoapAcpInit(u32 rxQueueLen, u32 txQueueLen) {
     IF_OK(status) {
 
         /* Find own node ID based on the static lookup table */
-        s_ownId = BoapAcpMacAddrToNodeId(hostMacAddr);
+        s_ownNodeId = BoapAcpMacAddrToNodeId(hostMacAddr);
         /* Assert host's MAC address is registered in the precompiled lookup table */
-        if (unlikely(BOAP_ACP_NODE_ID_INVALID == s_ownId)) {
+        if (unlikely(BOAP_ACP_NODE_ID_INVALID == s_ownNodeId)) {
 
             /* Cleanup */
             BoapAcpWiFiDeinit();
@@ -184,7 +191,7 @@ PUBLIC EBoapRet BoapAcpInit(u32 rxQueueLen, u32 txQueueLen) {
 
         for (nodeId = 0; nodeId < numberOfPeers; nodeId++) {
 
-            if (likely(nodeId != s_ownId)) {
+            if (likely(nodeId != s_ownNodeId)) {
 
                 (void) memcpy(peerInfo.peer_addr, s_macAddrLookupTable[nodeId], ESP_NOW_ETH_ALEN);
                 if (unlikely(esp_now_add_peer(&peerInfo))) {
@@ -213,7 +220,7 @@ PUBLIC EBoapRet BoapAcpInit(u32 rxQueueLen, u32 txQueueLen) {
  */
 PUBLIC TBoapAcpNodeId BoapAcpGetOwnNodeId(void) {
 
-    return s_ownId;
+    return s_ownNodeId;
 }
 
 /**
@@ -227,7 +234,7 @@ PUBLIC void * BoapAcpMsgCreate(TBoapAcpNodeId receiver, TBoapAcpMsgId msgId, TBo
 
     SBoapAcpMsg * message = NULL;
 
-    if (likely(payloadSize <= BOAP_ACP_MAX_PAYLOAD_SIZE)) {
+    if (likely(payloadSize <= BOAP_ACP_MAX_PAYLOAD_SIZE && msgId != BOAP_ACP_MSG_ID_INVALID)) {
 
         message = BoapMemAlloc(payloadSize + sizeof(SBoapAcpHeader));
         if (likely(NULL != message)) {
@@ -235,7 +242,7 @@ PUBLIC void * BoapAcpMsgCreate(TBoapAcpNodeId receiver, TBoapAcpMsgId msgId, TBo
             message->header.msgId = msgId;
             message->header.receiver = receiver;
             message->header.payloadSize = payloadSize;
-            message->header.sender = s_ownId;
+            message->header.sender = s_ownNodeId;
         }
     }
 
@@ -247,7 +254,7 @@ PUBLIC void * BoapAcpMsgCreate(TBoapAcpNodeId receiver, TBoapAcpMsgId msgId, TBo
  * @param msg Original message handle
  * @return Copy handle
  */
-void * BoapAcpMsgCreateCopy(void * msg) {
+void * BoapAcpMsgCreateCopy(const void * msg) {
 
     void * copy = BoapAcpMsgCreate(BoapAcpMsgGetReceiver(msg), BoapAcpMsgGetId(msg), BoapAcpMsgGetPayloadSize(msg));
 
@@ -267,7 +274,7 @@ void * BoapAcpMsgCreateCopy(void * msg) {
  * @param msg Message handle
  * @return Pointer to the beginning of the message payload
  */
-PUBLIC void * BoapAcpMsgGetPayload(void * msg) {
+PUBLIC void * BoapAcpMsgGetPayload(const void * msg) {
 
     return ((SBoapAcpMsg *) msg)->payload;
 }
@@ -277,7 +284,7 @@ PUBLIC void * BoapAcpMsgGetPayload(void * msg) {
  * @param msg Message handle
  * @return Payload size
  */
-PUBLIC TBoapAcpPayloadSize BoapAcpMsgGetPayloadSize(void * msg) {
+PUBLIC TBoapAcpPayloadSize BoapAcpMsgGetPayloadSize(const void * msg) {
 
     return ((SBoapAcpMsg *) msg)->header.payloadSize;
 }
@@ -287,7 +294,7 @@ PUBLIC TBoapAcpPayloadSize BoapAcpMsgGetPayloadSize(void * msg) {
  * @param msg Message handle
  * @return Bulk size
  */
-PUBLIC u32 BoapAcpMsgGetBulkSize(void * msg) {
+PUBLIC u32 BoapAcpMsgGetBulkSize(const void * msg) {
 
     return sizeof(SBoapAcpHeader) + (u32) BoapAcpMsgGetPayloadSize(msg);
 }
@@ -297,7 +304,7 @@ PUBLIC u32 BoapAcpMsgGetBulkSize(void * msg) {
  * @param msg Message handle
  * @return Message ID
  */
-PUBLIC TBoapAcpMsgId BoapAcpMsgGetId(void * msg) {
+PUBLIC TBoapAcpMsgId BoapAcpMsgGetId(const void * msg) {
 
     return ((SBoapAcpMsg *) msg)->header.msgId;
 }
@@ -307,7 +314,7 @@ PUBLIC TBoapAcpMsgId BoapAcpMsgGetId(void * msg) {
  * @param msg Message handle
  * @return Sender node ID
  */
-PUBLIC TBoapAcpNodeId BoapAcpMsgGetSender(void * msg) {
+PUBLIC TBoapAcpNodeId BoapAcpMsgGetSender(const void * msg) {
 
     return ((SBoapAcpMsg *) msg)->header.sender;
 }
@@ -317,7 +324,7 @@ PUBLIC TBoapAcpNodeId BoapAcpMsgGetSender(void * msg) {
  * @param msg Message handle
  * @return Receiver node ID
  */
-PUBLIC TBoapAcpNodeId BoapAcpMsgGetReceiver(void * msg) {
+PUBLIC TBoapAcpNodeId BoapAcpMsgGetReceiver(const void * msg) {
 
     return ((SBoapAcpMsg *) msg)->header.receiver;
 }
@@ -331,10 +338,9 @@ PUBLIC void BoapAcpMsgSend(void * msg) {
     /* Send the message to the gateway thread */
     if (unlikely(pdPASS != xQueueSend(s_txQueueHandle, &msg, 0))) {
 
-        SBoapAcpMsg * msgData = (SBoapAcpMsg *) msg;
         if (NULL != s_txMessageDroppedHook) {
 
-            s_txMessageDroppedHook(msgData->header.receiver, EBoapAcpTxMessageDroppedReason_QueueStarvation);
+            s_txMessageDroppedHook(BoapAcpMsgGetReceiver(msg), EBoapAcpTxMessageDroppedReason_QueueStarvation);
         }
         BoapAcpMsgDestroy(msg);
     }
@@ -350,6 +356,8 @@ PUBLIC void * BoapAcpMsgReceive(u32 timeout) {
     void * msg = NULL;
     /* Wait on the receive queue */
     (void) xQueueReceive(s_rxQueueHandle, &msg, (BOAP_ACP_WAIT_FOREVER == timeout) ? portMAX_DELAY : pdMS_TO_TICKS(timeout));
+
+    BOAP_ACP_TRACE_MSG(msg);
 
     return msg;
 }
@@ -382,12 +390,28 @@ PUBLIC void BoapAcpRegisterRxMessageDroppedHook(TBoapAcpRxMessageDroppedHook hoo
 }
 
 /**
+ * @brief Start/stop message tracing
+ * @param msgId ID of the message to be traced (BOAP_ACP_MSG_ID_INVALID to stop tracing)
+ * @param callback Function to be called when the message is sent or received (NULL to stop tracing)
+ */
+PUBLIC void BoapAcpTrace(TBoapAcpMsgId msgId, TBoapAcpTraceCallback callback) {
+
+    s_tracedMsgId = msgId;
+    s_traceCallback = callback;
+}
+
+/**
  * @brief Shut down the ACP service
  */
 PUBLIC void BoapAcpDeinit(void) {
 
     (void) BoapAcpEspNowDeinit();
     (void) BoapAcpWiFiDeinit();
+
+    vTaskDelete(s_gatewayThreadHandle);
+    s_gatewayThreadHandle = NULL;
+    vQueueDelete(s_txQueueHandle);
+    s_txQueueHandle = NULL;
     vQueueDelete(s_rxQueueHandle);
     s_rxQueueHandle = NULL;
 }
@@ -545,9 +569,8 @@ PRIVATE void BoapAcpEspNowDeinit(void) {
 PRIVATE void BoapAcpEspNowReceiveCallback(const u8 * macAddr, const u8 * data, i32 dataLen) {
 
     EBoapRet status = EBoapRet_Ok;
-    SBoapAcpMsg * msgData = (SBoapAcpMsg *) data;
-    u32 declaredSize = sizeof(SBoapAcpHeader) + msgData->header.payloadSize;
-    SBoapAcpMsg * localHandle = NULL;
+    i32 declaredSize = (i32)(sizeof(SBoapAcpHeader) + BoapAcpMsgGetPayloadSize(data));
+    void * msg = NULL;
 
     /* Assert correct message size */
     if (dataLen != declaredSize) {
@@ -558,13 +581,13 @@ PRIVATE void BoapAcpEspNowReceiveCallback(const u8 * macAddr, const u8 * data, i
     IF_OK(status) {
 
         /* Allocate buffer for the message locally */
-        localHandle = BoapMemAlloc(declaredSize);
+        msg = BoapMemAlloc(declaredSize);
 
-        if (unlikely(NULL == localHandle)) {
+        if (unlikely(NULL == msg)) {
 
             if (NULL != s_rxMessageDroppedHook) {
 
-                s_rxMessageDroppedHook(msgData->header.sender, EBoapAcpRxMessageDroppedReason_AllocationFailure);
+                s_rxMessageDroppedHook(BoapAcpMsgGetSender(data), EBoapAcpRxMessageDroppedReason_AllocationFailure);
             }
             status = EBoapRet_Error;
         }
@@ -572,18 +595,17 @@ PRIVATE void BoapAcpEspNowReceiveCallback(const u8 * macAddr, const u8 * data, i
 
     IF_OK(status) {
 
-        /* Copy the message to the local buffer */
-        (void) memcpy(localHandle, data, declaredSize);
+        (void) memcpy(msg, data, declaredSize);
 
         /* Push the message handle onto the receive queue */
-        if (unlikely(pdPASS != xQueueSend(s_rxQueueHandle, &localHandle, 0))) {
+        if (unlikely(pdPASS != xQueueSend(s_rxQueueHandle, &msg, 0))) {
 
-            status = EBoapRet_Error;
-            BoapMemUnref(localHandle);
             if (NULL != s_rxMessageDroppedHook) {
 
-                s_rxMessageDroppedHook(msgData->header.sender, EBoapAcpRxMessageDroppedReason_QueueStarvation);
+                s_rxMessageDroppedHook(BoapAcpMsgGetSender(msg), EBoapAcpRxMessageDroppedReason_QueueStarvation);
             }
+            BoapMemUnref(msg);
+            status = EBoapRet_Error;
         }
     }
 }
@@ -628,16 +650,17 @@ PRIVATE void BoapAcpGatewayThreadEntryPoint(void * arg) {
         /* Block on the TX queue indefinitely */
         (void) xQueueReceive(s_txQueueHandle, &msg, portMAX_DELAY);
 
-        SBoapAcpMsg * msgData = (SBoapAcpMsg *) msg;
+        BOAP_ACP_TRACE_MSG(msg);
+
         /* Get the matching MAC address from the lookup table */
-        const u8 * peerMacAddr = s_macAddrLookupTable[msgData->header.receiver];
+        const u8 * peerMacAddr = s_macAddrLookupTable[BoapAcpMsgGetReceiver(msg)];
 
         /* Send the message via ESP-NOW API */
-        if (unlikely(ESP_OK != esp_now_send(peerMacAddr, (const u8*) msg, sizeof(SBoapAcpHeader) + msgData->header.payloadSize))) {
+        if (unlikely(ESP_OK != esp_now_send(peerMacAddr, (const u8*) msg, sizeof(SBoapAcpHeader) + BoapAcpMsgGetPayloadSize(msg)))) {
 
             if (NULL != s_txMessageDroppedHook) {
 
-                s_txMessageDroppedHook(msgData->header.receiver, EBoapAcpTxMessageDroppedReason_EspNowSendFailed);
+                s_txMessageDroppedHook(BoapAcpMsgGetReceiver(msg), EBoapAcpTxMessageDroppedReason_EspNowSendFailed);
             }
         }
 

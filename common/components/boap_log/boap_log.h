@@ -10,10 +10,10 @@
 #include <boap_common.h>
 
 typedef enum EBoapLogSeverityLevel {
-    EBoapLogSeverityLevel_Info = 0,
+    EBoapLogSeverityLevel_Debug = 0,
+    EBoapLogSeverityLevel_Info,
     EBoapLogSeverityLevel_Warning,
-    EBoapLogSeverityLevel_Error,
-    EBoapLogSeverityLevel_Debug
+    EBoapLogSeverityLevel_Error
 } EBoapLogSeverityLevel;
 
 typedef void (* TBoapLogCommitCallback)(u32 len, const char * header, const char * payload, const char * trailer);
@@ -38,5 +38,11 @@ void BoapLogRegisterMessageTruncationHook(TBoapLogMessageTruncationHook hook);
  * @param ... (optional) Variadic number of format arguments
  */
 void BoapLogPrint(EBoapLogSeverityLevel severityLevel, const char * format, ...);
+
+/**
+ * @brief Set severity level threshold
+ * @param severityThreshold Severity level threshold. Logs of severity level lower than severityThreshold will not be printed
+ */
+void BoapLogSetSeverityThreshold(EBoapLogSeverityLevel severityThreshold);
 
 #endif /* BOAP_LOG_H */

@@ -3,6 +3,7 @@ set(SOURCES "main.c"
 set(INCLUDES "./inc"
              "../../common/include")
 set(LIBS boap_mem
+         boap_log
          boap_acp
          boap_touchscreen)
 

@@ -26,6 +26,7 @@ typedef enum EBoapAcpRxMessageDroppedReason {
 
 typedef void (* TBoapAcpTxMessageDroppedHook)(TBoapAcpNodeId receiver, EBoapAcpTxMessageDroppedReason reason);
 typedef void (* TBoapAcpRxMessageDroppedHook)(TBoapAcpNodeId sender, EBoapAcpRxMessageDroppedReason reason);
+typedef void (* TBoapAcpTraceCallback)(void * msg);
 
 #define BOAP_ACP_MSG_ID_INVALID      ( (TBoapAcpMsgId) 0xFF )
 
@@ -64,49 +65,49 @@ void * BoapAcpMsgCreate(TBoapAcpNodeId receiver, TBoapAcpMsgId msgId, TBoapAcpPa
  * @param msg Original message handle
  * @return Copy handle
  */
-void * BoapAcpMsgCreateCopy(void * msg);
+void * BoapAcpMsgCreateCopy(const void * msg);
 
 /**
  * @brief Get the message payload
  * @param msg Message handle
  * @return Pointer to the beginning of the message payload
  */
-void * BoapAcpMsgGetPayload(void * msg);
+void * BoapAcpMsgGetPayload(const void * msg);
 
 /**
  * @brief Get the message payload size
  * @param msg Message handle
  * @return Payload size
  */
-TBoapAcpPayloadSize BoapAcpMsgGetPayloadSize(void * msg);
+TBoapAcpPayloadSize BoapAcpMsgGetPayloadSize(const void * msg);
 
 /**
  * @brief Get the message bulk size
  * @param msg Message handle
  * @return Bulk size
  */
-u32 BoapAcpMsgGetBulkSize(void * msg);
+u32 BoapAcpMsgGetBulkSize(const void * msg);
 
 /**
  * @brief Get the message ID
  * @param msg Message handle
  * @return Message ID
  */
-TBoapAcpMsgId BoapAcpMsgGetId(void * msg);
+TBoapAcpMsgId BoapAcpMsgGetId(const void * msg);
 
 /**
  * @brief Get the sender node ID
  * @param msg Message handle
  * @return Sender node ID
  */
-TBoapAcpNodeId BoapAcpMsgGetSender(void * msg);
+TBoapAcpNodeId BoapAcpMsgGetSender(const void * msg);
 
 /**
  * @brief Get the receiver node ID
  * @param msg Message handle
  * @return Receiver node ID
  */
-TBoapAcpNodeId BoapAcpMsgGetReceiver(void * msg);
+TBoapAcpNodeId BoapAcpMsgGetReceiver(const void * msg);
 
 /**
  * @brief Send an ACP message
@@ -138,6 +139,13 @@ void BoapAcpRegisterTxMessageDroppedHook(TBoapAcpTxMessageDroppedHook hook);
  * @param hook
  */
 void BoapAcpRegisterRxMessageDroppedHook(TBoapAcpRxMessageDroppedHook hook);
+
+/**
+ * @brief Start/stop message tracing
+ * @param msgId ID of the message to be traced (BOAP_ACP_MSG_ID_INVALID to stop tracing)
+ * @param callback Function to be called when the message is sent or received (NULL to stop tracing)
+ */
+void BoapAcpTrace(TBoapAcpMsgId msgId, TBoapAcpTraceCallback callback);
 
 /**
  * @brief Shut down the ACP service

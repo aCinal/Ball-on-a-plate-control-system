@@ -12,7 +12,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#define BOAP_LISTENER_THREAD_STACK_SIZE  2 * 1024
+#define BOAP_LISTENER_THREAD_STACK_SIZE  4 * 1024
 #define BOAP_LISTENER_THREAD_PRIORITY    BOAP_PRIO_REALTIME
 
 PRIVATE void BoapListenerThreadEntryPoint(void * arg);
@@ -48,6 +48,8 @@ PUBLIC EBoapRet BoapListenerInit(void) {
 }
 
 PRIVATE void BoapListenerThreadEntryPoint(void * arg) {
+
+    (void) arg;
 
     BoapLogPrint(EBoapLogSeverityLevel_Info, "Listener thread entered on core %d", xPortGetCoreID());
 

@@ -35,6 +35,8 @@ PRIVATE void BoapStartupThreadEntryPoint(void * arg);
 PRIVATE EBoapRet BoapStartupRtLoggerInit(void);
 PRIVATE void BoapStartupLoggerCommitCallback(u32 len, const char * header, const char * payload, const char * trailer);
 PRIVATE void BoapStartupLoggerEntryPoint(void * arg);
+PRIVATE void BoapStartupAcpTxMessageDroppedHook(TBoapAcpNodeId receiver, EBoapAcpTxMessageDroppedReason reason);
+PRIVATE void BoapStartupAcpRxMessageDroppedHook(TBoapAcpNodeId sender, EBoapAcpRxMessageDroppedReason reason);
 
 /**
  * @brief Start up the ball-on-a-plate application
@@ -49,6 +51,8 @@ PUBLIC EBoapRet BoapStartupRun(void) {
     BoapMemRegisterIsrUnrefHook(BoapEventDeferMemoryUnref);
     BoapLogRegisterCommitCallback(BoapStartupLoggerCommitCallback);
     BoapLogRegisterMessageTruncationHook(BoapStatsLogMessageTruncationHook);
+    BoapAcpRegisterTxMessageDroppedHook(BoapStartupAcpTxMessageDroppedHook);
+    BoapAcpRegisterRxMessageDroppedHook(BoapStartupAcpRxMessageDroppedHook);
 
     BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): Application startup in progress. Creating the startup thread...", __FUNCTION__);
 
@@ -86,6 +90,9 @@ PRIVATE void BoapStartupThreadEntryPoint(void * arg) {
     assert(EBoapRet_Ok == BoapAcpInit(BOAP_STARTUP_ACP_QUEUE_LEN, BOAP_STARTUP_ACP_QUEUE_LEN));
 
     BoapLogPrint(EBoapLogSeverityLevel_Info, "ACP stack initialized. Own node ID is 0x%02X", BoapAcpGetOwnNodeId());
+
+    /* Assert correct deployment */
+    assert(BoapAcpGetOwnNodeId() == BOAP_ACP_NODE_ID_PLANT);
 
     /* Start up the event dispatcher */
     assert(EBoapRet_Ok == BoapEventDispatcherInit());
@@ -197,4 +204,14 @@ PRIVATE void BoapStartupLoggerEntryPoint(void * arg) {
             BoapMemUnref(msg);
         }
     }
+}
+
+PRIVATE void BoapStartupAcpTxMessageDroppedHook(TBoapAcpNodeId receiver, EBoapAcpTxMessageDroppedReason reason) {
+
+    BoapLogPrint(EBoapLogSeverityLevel_Error, "Dropped outgoing ACP message to 0x%02X (reason: %d)", receiver, reason);
+}
+
+PRIVATE void BoapStartupAcpRxMessageDroppedHook(TBoapAcpNodeId sender, EBoapAcpRxMessageDroppedReason reason) {
+
+    BoapLogPrint(EBoapLogSeverityLevel_Error, "Dropped incoming ACP message from 0x%02X (reason: %d)", sender, reason);
 }

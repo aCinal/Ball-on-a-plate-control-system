@@ -83,7 +83,7 @@ PRIVATE SBoapControlStateContext s_stateContexts[] = {
         .ServoObject         = NULL }
 };
 PRIVATE SBoapTouchscreen * s_touchscreenHandle = NULL;
-PRIVATE esp_timer_handle_t s_timerHandle;
+PRIVATE esp_timer_handle_t s_timerHandle = NULL;
 PRIVATE bool s_inHandlerMarker = false;
 PRIVATE r32 s_samplingPeriod = 0.0f;
 
@@ -390,6 +390,7 @@ PUBLIC void BoapControlHandleAcpMessage(void * message) {
     switch (BoapAcpMsgGetId(message)) {
 
     case BOAP_ACP_PING_REQ:
+
         BoapControlHandlePingReq(message);
         break;
 
