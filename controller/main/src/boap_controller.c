@@ -221,7 +221,7 @@ PRIVATE void BoapControllerTimerCallback(void * arg) {
     if (BoapTouchscreenGetPosition(s_touchscreenHandle, EBoapAxis_X, &xPosition) && BoapTouchscreenGetPosition(s_touchscreenHandle, EBoapAxis_Y, &yPosition)) {
 
         /* If both axes register valid inputs, send new setpoint request to the plant */
-        void * newSetpointRequest = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_CONTROLLER, BOAP_ACP_NEW_SETPOINT_REQ, sizeof(SBoapAcpNewSetpointReq));
+        void * newSetpointRequest = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_PLANT, BOAP_ACP_NEW_SETPOINT_REQ, sizeof(SBoapAcpNewSetpointReq));
         if (likely(NULL != newSetpointRequest)) {
 
             SBoapAcpNewSetpointReq * payload = BoapAcpMsgGetPayload(newSetpointRequest);

@@ -89,6 +89,7 @@ PRIVATE r32 s_samplingPeriod = 0.0f;
 
 PRIVATE void BoapControlTimerCallback(void * arg);
 PRIVATE void BoapControlStateTransition(void);
+PRIVATE void BoapControlTraceBallPosition(EBoapAxis axisId, r32 position);
 PRIVATE void BoapControlHandlePingReq(void * request);
 PRIVATE void BoapControlHandleNewSetpointReq(void * request);
 PRIVATE void BoapControlHandleGetPidSettingsReq(void * request);
@@ -326,48 +327,49 @@ PUBLIC EBoapRet BoapControlInit(void) {
  */
 PUBLIC void BoapControlHandleTimerExpired(void) {
 
-    static u32 noTouchCounter = 0;
-    static r32 unfilteredPositionMm = 0.0f;
+    static u32 noTouchCounter[] = {
+        [EBoapAxis_X] = 0,
+        [EBoapAxis_Y] = 0
+    };
+    static r32 unfilteredPositionMm[] = {
+        [EBoapAxis_X] = 0.0f,
+        [EBoapAxis_Y] = 0.0f
+    };
 
     /* Mark entry into the event handler */
     s_inHandlerMarker = true;
 
     /* Run the ADC conversion */
-    bool isBallOnThePlate = BoapTouchscreenGetPosition(s_touchscreenHandle, s_currentStateAxis, &unfilteredPositionMm);
+    bool isBallOnThePlate = BoapTouchscreenGetPosition(s_touchscreenHandle, s_currentStateAxis, &unfilteredPositionMm[s_currentStateAxis]);
 
     if (unlikely(!isBallOnThePlate)) {
 
         /* Record the no touch condition */
-        noTouchCounter++;
+        noTouchCounter[s_currentStateAxis]++;
 
     } else {
 
         /* Reset the no touch condition counter - ball is touching the plate */
-        noTouchCounter = 0;
+        noTouchCounter[s_currentStateAxis] = 0;
     }
 
     /* Assert the ball is still on the plate */
-    if (likely(isBallOnThePlate || (noTouchCounter < BOAP_CONTROL_SPURIOUS_NO_TOUCH_TOLERANCE))) {
+    if (likely(isBallOnThePlate || (noTouchCounter[s_currentStateAxis] < BOAP_CONTROL_SPURIOUS_NO_TOUCH_TOLERANCE))) {
 
         /* On spurious no touch condition, unfilteredPositionMm does not change, so use its old value */
 
         /* Filter the sample */
-        r32 filteredPositionMm = BoapFilterGetSample(s_stateContexts[s_currentStateAxis].MovingAverageFilter, unfilteredPositionMm);
+        r32 filteredPositionMm = BoapFilterGetSample(s_stateContexts[s_currentStateAxis].MovingAverageFilter, unfilteredPositionMm[s_currentStateAxis]);
         /* Apply PID regulation */
         r32 regulatorOutputRad = BoapPidGetSample(s_stateContexts[s_currentStateAxis].PidRegulator, filteredPositionMm);
-#if 0
-        BoapLogPrint(EBoapLogSeverityLevel_Debug, "unfilteredPositionMm: %f, filteredPositionMm: %f, regulatorOutputRad: %f",
-            unfilteredPositionMm, filteredPositionMm, regulatorOutputRad);
-#endif
         /* Set servo position */
         BoapServoSetPosition(s_stateContexts[s_currentStateAxis].ServoObject, regulatorOutputRad);
 
-    } else {
+        /* Send the trace message */
+        BoapControlTraceBallPosition(s_currentStateAxis, filteredPositionMm);
 
-        /* Actual no touch condition */
-#if 0
-        BoapLogPrint(EBoapLogSeverityLevel_Debug, "No touch!");
-#endif
+    } else {  /* Actual no touch condition */
+
         /* Level the plate and clear the state */
         BoapServoSetPosition(s_stateContexts[s_currentStateAxis].ServoObject, 0.0f);
         BoapFilterReset(s_stateContexts[s_currentStateAxis].MovingAverageFilter);
@@ -449,6 +451,19 @@ PRIVATE void BoapControlStateTransition(void) {
     s_currentStateAxis = !s_currentStateAxis;
 }
 
+PRIVATE void BoapControlTraceBallPosition(EBoapAxis axisId, r32 position) {
+
+    /* Send the trace indication message */
+    void * message = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_PC, BOAP_ACP_BALL_TRACE_IND, sizeof(SBoapAcpBallTraceInd));
+    if (likely(NULL != message)) {
+
+        SBoapAcpBallTraceInd * payload = (SBoapAcpBallTraceInd *) BoapAcpMsgGetPayload(message);
+        payload->AxisId = axisId;
+        payload->Position = position;
+        BoapAcpMsgSend(message);
+    }
+}
+
 PRIVATE void BoapControlHandlePingReq(void * request) {
 
     /* Send the response message */
@@ -471,24 +486,8 @@ PRIVATE void BoapControlHandleNewSetpointReq(void * request) {
     SBoapAcpNewSetpointReq * reqPayload = (SBoapAcpNewSetpointReq *) BoapAcpMsgGetPayload(request);
 
     /* Change the setpoint */
-    r32 oldSetpointX = BoapPidSetSetpoint(s_stateContexts[EBoapAxis_X].PidRegulator, reqPayload->SetpointX);
-    r32 oldSetpointY = BoapPidSetSetpoint(s_stateContexts[EBoapAxis_Y].PidRegulator, reqPayload->SetpointY);
-
-    /* Send the response message */
-    void * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_NEW_SETPOINT_RESP, sizeof(SBoapAcpNewSetpointResp));
-    if (likely(NULL != response)) {
-
-        SBoapAcpNewSetpointResp * respPayload = (SBoapAcpNewSetpointResp *) BoapAcpMsgGetPayload(response);
-        respPayload->NewSetpointX = reqPayload->SetpointX;
-        respPayload->NewSetpointY = reqPayload->SetpointY;
-        respPayload->OldSetpointX = oldSetpointX;
-        respPayload->OldSetpointY = oldSetpointY;
-        BoapAcpMsgSend(response);
-
-    } else {
-
-        BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create BOAP_ACP_NEW_SETPOINT_RESP");
-    }
+    (void) BoapPidSetSetpoint(s_stateContexts[EBoapAxis_X].PidRegulator, reqPayload->SetpointX);
+    (void) BoapPidSetSetpoint(s_stateContexts[EBoapAxis_Y].PidRegulator, reqPayload->SetpointY);
 
     /* Destroy the request message */
     BoapAcpMsgDestroy(request);
@@ -527,7 +526,7 @@ PRIVATE void BoapControlHandleSetPidSettingsReq(void * request) {
     r32 oldDerivativeGain = BoapPidSetDerivativeGain(s_stateContexts[reqPayload->AxisId].PidRegulator, reqPayload->DerivativeGain);
 
     BoapLogPrint(EBoapLogSeverityLevel_Info, "Changed %s PID settings from (%f, %f, %f) to (%f, %f, %f)",
-        BOAP_TOUCHSCREEN_AXIS_NAME(reqPayload->AxisId), oldProportionalGain, oldIntegralGain, oldDerivativeGain,
+        BOAP_AXIS_NAME(reqPayload->AxisId), oldProportionalGain, oldIntegralGain, oldDerivativeGain,
         reqPayload->ProportionalGain, reqPayload->IntegralGain, reqPayload->DerivativeGain);
 
     /* Send the response message */
@@ -611,12 +610,12 @@ PRIVATE void BoapControlHandleSetFilterOrderReq(void * request) {
         /* Set the new filter in place */
         s_stateContexts[reqPayload->AxisId].MovingAverageFilter = newFilter;
         BoapLogPrint(EBoapLogSeverityLevel_Info, "Successfully changed %s filter order from %u to %u",
-            BOAP_TOUCHSCREEN_AXIS_NAME(reqPayload->AxisId), oldFilterOrder, newFilterOrder);
+            BOAP_AXIS_NAME(reqPayload->AxisId), oldFilterOrder, newFilterOrder);
 
     } else {
 
         BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to instantiate a new filter object of order %u for the %s. Filter remains of order %u",
-            reqPayload->FilterOrder, BOAP_TOUCHSCREEN_AXIS_NAME(reqPayload->AxisId), oldFilterOrder);
+            reqPayload->FilterOrder, BOAP_AXIS_NAME(reqPayload->AxisId), oldFilterOrder);
         status = EBoapRet_Error;
     }
 

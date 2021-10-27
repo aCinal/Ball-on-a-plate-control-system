@@ -51,11 +51,11 @@ PUBLIC SBoapPid * BoapPidCreate(r32 sp, r32 kp, r32 ki, r32 kd, r32 ts, r32 sat)
         handle->SaturationThreshold = sat;
 
         /* Initialize the internal state */
-        handle->PreviousError = 0;
-        handle->PreviousMeasurement = 0;
-        handle->RunningSum = 0;
-        handle->PreviousOutputUnbounded = 0;
-        handle->PreviousOutputBounded = 0;
+        handle->PreviousError = 0.0f;
+        handle->PreviousMeasurement = 0.0f;
+        handle->RunningSum = 0.0f;
+        handle->PreviousOutputUnbounded = 0.0f;
+        handle->PreviousOutputBounded = 0.0f;
     }
 
     return handle;
@@ -109,11 +109,11 @@ PUBLIC r32 BoapPidGetSample(SBoapPid * handle, r32 pv) {
  */
 PUBLIC void BoapPidReset(SBoapPid * handle) {
 
-    handle->PreviousError = 0.0;
-    handle->PreviousMeasurement = 0.0;
-    handle->PreviousOutputBounded = 0.0;
-    handle->PreviousOutputUnbounded = 0.0;
-    handle->RunningSum = 0.0;
+    handle->PreviousError = 0.0f;
+    handle->PreviousMeasurement = 0.0f;
+    handle->PreviousOutputBounded = 0.0f;
+    handle->PreviousOutputUnbounded = 0.0f;
+    handle->RunningSum = 0.0f;
 }
 
 /**

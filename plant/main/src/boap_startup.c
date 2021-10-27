@@ -19,7 +19,6 @@
 #include <freertos/queue.h>
 #include <stddef.h>
 #include <string.h>
-#include <assert.h>
 
 #define BOAP_STARTUP_THREAD_STACK_SIZE         4 * 1024
 #define BOAP_STARTUP_THREAD_PRIORITY           BOAP_PRIO_NORMAL
@@ -87,21 +86,21 @@ PRIVATE void BoapStartupThreadEntryPoint(void * arg) {
 
     /* Initialize the ACP stack */
     BoapLogPrint(EBoapLogSeverityLevel_Info, "Initializing the ACP stack...");
-    assert(EBoapRet_Ok == BoapAcpInit(BOAP_STARTUP_ACP_QUEUE_LEN, BOAP_STARTUP_ACP_QUEUE_LEN));
+    ASSERT(EBoapRet_Ok == BoapAcpInit(BOAP_STARTUP_ACP_QUEUE_LEN, BOAP_STARTUP_ACP_QUEUE_LEN), "ACP stack initialization must not fail");
 
     BoapLogPrint(EBoapLogSeverityLevel_Info, "ACP stack initialized. Own node ID is 0x%02X", BoapAcpGetOwnNodeId());
 
     /* Assert correct deployment */
-    assert(BoapAcpGetOwnNodeId() == BOAP_ACP_NODE_ID_PLANT);
+    ASSERT(BoapAcpGetOwnNodeId() == BOAP_ACP_NODE_ID_PLANT, "Plant software must be correctly deployed to the correct MCU");
 
     /* Start up the event dispatcher */
-    assert(EBoapRet_Ok == BoapEventDispatcherInit());
+    ASSERT(EBoapRet_Ok == BoapEventDispatcherInit(), "Event dispatcher startup must not fail");
 
     /* Startup dispatcher applications */
-    assert(EBoapRet_Ok == BoapControlInit());
+    ASSERT(EBoapRet_Ok == BoapControlInit(), "Control application startup must not fail");
 
     /* Startup the message listener */
-    assert(EBoapRet_Ok == BoapListenerInit());
+    ASSERT(EBoapRet_Ok == BoapListenerInit(), "Message listener startup must not fail");
 
     /* Start up NRT applications */
     (void) BoapStatsInit();

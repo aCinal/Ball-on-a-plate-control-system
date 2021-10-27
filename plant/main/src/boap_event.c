@@ -113,7 +113,7 @@ PUBLIC EBoapRet BoapEventSend(EBoapEventType eventType, void * payload) {
 PUBLIC void BoapEventDeferMemoryUnref(void * block) {
 
     /* Assert success to prevent a memory leak */
-    assert(EBoapRet_Ok == BoapEventSend(EBoapEventType_DeferredMemoryUnref, block));
+    ASSERT(EBoapRet_Ok == BoapEventSend(EBoapEventType_DeferredMemoryUnref, block), "Deferred memory unref must never fail. Increase event queue size");
 }
 
 PRIVATE void BoapEventDispatcherEntryPoint(void * arg) {

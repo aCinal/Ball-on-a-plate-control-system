@@ -13,8 +13,8 @@
 /* Message definitions */
 #define BOAP_ACP_PING_REQ                  ( (TBoapAcpMsgId) 0x00 )
 #define BOAP_ACP_PING_RESP                 ( (TBoapAcpMsgId) 0x01 )
-#define BOAP_ACP_NEW_SETPOINT_REQ          ( (TBoapAcpMsgId) 0x02 )
-#define BOAP_ACP_NEW_SETPOINT_RESP         ( (TBoapAcpMsgId) 0x03 )
+#define BOAP_ACP_BALL_TRACE_IND            ( (TBoapAcpMsgId) 0x02 )
+#define BOAP_ACP_NEW_SETPOINT_REQ          ( (TBoapAcpMsgId) 0x03 )
 #define BOAP_ACP_GET_PID_SETTINGS_REQ      ( (TBoapAcpMsgId) 0x04 )
 #define BOAP_ACP_GET_PID_SETTINGS_RESP     ( (TBoapAcpMsgId) 0x05 )
 #define BOAP_ACP_SET_PID_SETTINGS_REQ      ( (TBoapAcpMsgId) 0x06 )
@@ -24,17 +24,15 @@
 #define BOAP_ACP_SET_FILTER_ORDER_REQ      ( (TBoapAcpMsgId) 0x0A )
 #define BOAP_ACP_SET_FILTER_ORDER_RESP     ( (TBoapAcpMsgId) 0x0B )
 
+typedef struct SBoapAcpBallTraceInd {
+    EBoapAxis AxisId;
+    r32 Position;
+} SBoapAcpBallTraceInd;
+
 typedef struct SBoapAcpNewSetpointReq {
     r32 SetpointX;
     r32 SetpointY;
 } SBoapAcpNewSetpointReq;
-
-typedef struct SBoapAcpNewSetpointResp {
-    r32 OldSetpointX;
-    r32 OldSetpointY;
-    r32 NewSetpointX;
-    r32 NewSetpointY;
-} SBoapAcpNewSetpointResp;
 
 typedef struct SBoapAcpGetPidSettingsReq {
     EBoapAxis AxisId;

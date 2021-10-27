@@ -8,7 +8,6 @@
 #include <boap_common.h>
 #include <boap_mem.h>
 #include <string.h>
-#include <assert.h>
 
 typedef struct SBoapFilter {
 	u32 FilterOrder;
@@ -26,7 +25,7 @@ typedef struct SBoapFilter {
  */
 PUBLIC SBoapFilter * BoapFilterCreate(u32 filterOrder) {
 
-    assert(filterOrder > 0);
+    ASSERT(filterOrder > 0, "Filter order be strictly positive");
     SBoapFilter * handle = BoapMemAlloc(BOAP_FILTER_HANDLE_SIZE(filterOrder));
     if (likely(NULL != handle)) {
 

@@ -14,8 +14,6 @@
 
 typedef struct SBoapTouchscreen SBoapTouchscreen;
 
-#define BOAP_TOUCHSCREEN_AXIS_NAME(axis)  ( (axis) == EBoapAxis_X ? "X-axis" : "Y-axis" )
-
 /**
  * @brief Create a touchscreen object instance
  * @param xDim X dimension of the touchscreen
