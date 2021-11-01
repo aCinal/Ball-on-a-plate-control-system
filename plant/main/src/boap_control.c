@@ -33,9 +33,9 @@ typedef struct SBoapControlStateContext {
 #define BOAP_CONTROL_SAMPLING_PERIOD_DEFAULT              0.05
 
 #define BOAP_CONTROL_SATURATION_THRESHOLD_DEFAULT         ( asin(1) / 3.0 )
-#define BOAP_CONTROL_PROPORTIONAL_GAIN_DEFAULT            -1.0f
+#define BOAP_CONTROL_PROPORTIONAL_GAIN_DEFAULT            1.0f
 #define BOAP_CONTROL_INTEGRAL_GAIN_DEFAULT                0.0f
-#define BOAP_CONTROL_DERIVATIVE_GAIN_DEFAULT              -0.5f
+#define BOAP_CONTROL_DERIVATIVE_GAIN_DEFAULT              0.5f
 
 #define BOAP_CONTROL_FILTER_ORDER_DEFAULT                 5
 
@@ -459,6 +459,7 @@ PRIVATE void BoapControlTraceBallPosition(EBoapAxis axisId, r32 position) {
 
         SBoapAcpBallTraceInd * payload = (SBoapAcpBallTraceInd *) BoapAcpMsgGetPayload(message);
         payload->AxisId = axisId;
+        payload->Setpoint = BoapPidGetSetpoint(s_stateContexts[axisId].PidRegulator);
         payload->Position = position;
         BoapAcpMsgSend(message);
     }

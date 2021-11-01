@@ -23,6 +23,8 @@
 #define BOAP_ACP_GATEWAY_STACK_SIZE  4 * 1024
 #define BOAP_ACP_GATEWAY_PRIORITY    BOAP_PRIO_REALTIME
 
+#define BOAP_ACP_NUMBER_OF_PEERS     ( sizeof(s_macAddrLookupTable) / sizeof(s_macAddrLookupTable[0]) )
+
 #define BOAP_ACP_TRACE_MSG(MSG)  \
     if (BoapAcpMsgGetId(MSG) == s_tracedMsgId && NULL != s_traceCallback) { \
         s_traceCallback(MSG); \
@@ -41,9 +43,9 @@ typedef struct SBoapAcpMsg {
 } SBoapAcpMsg;
 
 PRIVATE const u8 s_macAddrLookupTable[][ESP_NOW_ETH_ALEN] = {
-    [BOAP_ACP_NODE_ID_PLANT] = { 0x08, 0x3a, 0xf2, 0x99, 0x27, 0x41 },
-    [BOAP_ACP_NODE_ID_CONTROLLER] = { 0x08, 0x3a, 0xf2, 0xab, 0xf7, 0x7d },
-    [BOAP_ACP_NODE_ID_PC] = { 0x08, 0x3a, 0xf2, 0x9a, 0x06, 0xbd }
+    [BOAP_ACP_NODE_ID_PLANT] = BOAP_ACP_NODE_MAC_ADDR_PLANT,
+    [BOAP_ACP_NODE_ID_CONTROLLER] = BOAP_ACP_NODE_MAC_ADDR_CONTROLLER,
+    [BOAP_ACP_NODE_ID_PC] = BOAP_ACP_NODE_MAC_ADDR_PC
 };
 PRIVATE TBoapAcpNodeId s_ownNodeId = BOAP_ACP_NODE_ID_INVALID;
 PRIVATE QueueHandle_t s_rxQueueHandle = NULL;
@@ -569,19 +571,37 @@ PRIVATE void BoapAcpEspNowDeinit(void) {
 PRIVATE void BoapAcpEspNowReceiveCallback(const u8 * macAddr, const u8 * data, i32 dataLen) {
 
     EBoapRet status = EBoapRet_Ok;
-    i32 declaredSize = (i32)(sizeof(SBoapAcpHeader) + BoapAcpMsgGetPayloadSize(data));
     void * msg = NULL;
 
-    /* Assert correct message size */
-    if (dataLen != declaredSize) {
+    /* Assert it is safe to access the ACP header */
+    if (unlikely(dataLen < sizeof(SBoapAcpHeader))) {
 
         status = EBoapRet_Error;
     }
 
     IF_OK(status) {
 
+        /* Assert correct message size */
+        i32 declaredSize = (i32)(sizeof(SBoapAcpHeader) + BoapAcpMsgGetPayloadSize(data));
+        if (unlikely(dataLen != declaredSize)) {
+
+            status = EBoapRet_Error;
+        }
+    }
+
+    IF_OK(status) {
+
+        /* Assert valid receiver */
+        if (unlikely(BoapAcpMsgGetReceiver(data) != s_ownNodeId)) {
+
+            status = EBoapRet_Error;
+        }
+    }
+
+    IF_OK(status) {
+
         /* Allocate buffer for the message locally */
-        msg = BoapMemAlloc(declaredSize);
+        msg = BoapMemAlloc(dataLen);
 
         if (unlikely(NULL == msg)) {
 
@@ -595,7 +615,7 @@ PRIVATE void BoapAcpEspNowReceiveCallback(const u8 * macAddr, const u8 * data, i
 
     IF_OK(status) {
 
-        (void) memcpy(msg, data, declaredSize);
+        (void) memcpy(msg, data, dataLen);
 
         /* Push the message handle onto the receive queue */
         if (unlikely(pdPASS != xQueueSend(s_rxQueueHandle, &msg, 0))) {
@@ -650,17 +670,28 @@ PRIVATE void BoapAcpGatewayThreadEntryPoint(void * arg) {
         /* Block on the TX queue indefinitely */
         (void) xQueueReceive(s_txQueueHandle, &msg, portMAX_DELAY);
 
-        BOAP_ACP_TRACE_MSG(msg);
+        /* Assert valid receiver */
+        if (likely(BoapAcpMsgGetReceiver(msg) < BOAP_ACP_NUMBER_OF_PEERS)) {
 
-        /* Get the matching MAC address from the lookup table */
-        const u8 * peerMacAddr = s_macAddrLookupTable[BoapAcpMsgGetReceiver(msg)];
+            BOAP_ACP_TRACE_MSG(msg);
 
-        /* Send the message via ESP-NOW API */
-        if (unlikely(ESP_OK != esp_now_send(peerMacAddr, (const u8*) msg, sizeof(SBoapAcpHeader) + BoapAcpMsgGetPayloadSize(msg)))) {
+            /* Get the matching MAC address from the lookup table */
+            const u8 * peerMacAddr = s_macAddrLookupTable[BoapAcpMsgGetReceiver(msg)];
+
+            /* Send the message via ESP-NOW API */
+            if (unlikely(ESP_OK != esp_now_send(peerMacAddr, (const u8*) msg, sizeof(SBoapAcpHeader) + BoapAcpMsgGetPayloadSize(msg)))) {
+
+                if (NULL != s_txMessageDroppedHook) {
+
+                    s_txMessageDroppedHook(BoapAcpMsgGetReceiver(msg), EBoapAcpTxMessageDroppedReason_EspNowSendFailed);
+                }
+            }
+
+        } else {
 
             if (NULL != s_txMessageDroppedHook) {
 
-                s_txMessageDroppedHook(BoapAcpMsgGetReceiver(msg), EBoapAcpTxMessageDroppedReason_EspNowSendFailed);
+                s_txMessageDroppedHook(BoapAcpMsgGetReceiver(msg), EBoapAcpTxMessageDroppedReason_InvalidReceiver);
             }
         }
 

@@ -26,6 +26,7 @@
 
 typedef struct SBoapAcpBallTraceInd {
     EBoapAxis AxisId;
+    r32 Setpoint;
     r32 Position;
 } SBoapAcpBallTraceInd;
 

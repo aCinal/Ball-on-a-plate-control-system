@@ -17,6 +17,7 @@ typedef enum EBoapAcpTxMessageDroppedReason {
     EBoapAcpTxMessageDroppedReason_QueueStarvation = 0,
     EBoapAcpTxMessageDroppedReason_EspNowSendFailed,
     EBoapAcpTxMessageDroppedReason_MacLayerError,
+    EBoapAcpTxMessageDroppedReason_InvalidReceiver
 } EBoapAcpTxMessageDroppedReason;
 
 typedef enum EBoapAcpRxMessageDroppedReason {

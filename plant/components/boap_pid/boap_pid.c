@@ -117,6 +117,16 @@ PUBLIC void BoapPidReset(SBoapPid * handle) {
 }
 
 /**
+ * @brief Get the regulator's current set point
+ * @param handle PID regulator handle
+ * @return Current set point
+ */
+PUBLIC r32 BoapPidGetSetpoint(SBoapPid * handle) {
+
+    return handle->SetPoint;
+}
+
+/**
  * @brief Change the regulator's set point
  * @param handle PID regulator handle
  * @param sp New set point

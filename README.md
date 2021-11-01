@@ -12,14 +12,16 @@ git clone https://github.com/espressif/esp-idf
 
 2. Set up the ESP-IDF environment as described here: `https://github.com/espressif/esp-idf`
 
-3. Build a selected component, e.g. *plant*
+3. Set the MAC addresses of specific nodes in file `env.cmake` (see `env.cmake.example` for reference)
+
+4. Build a selected component, e.g. *plant*
 
 ```bash
 cd plant
 idf.py build
 ```
 
-4. Flash the board and monitor its startup
+5. Flash the board and monitor its startup
 
 ```bash
 idf.py -p (PORT) flash monitor
