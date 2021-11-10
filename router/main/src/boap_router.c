@@ -82,7 +82,6 @@ PUBLIC EBoapRet BoapRouterInit(void) {
             BoapRouterUartDeinit();
             BoapAcpDeinit();
             status = EBoapRet_Error;
-
         }
     }
 

@@ -1,5 +1,6 @@
 build
 .vscode
+env.cmake
 __pycache__
 *.pyc
-env.cmake
+venv/

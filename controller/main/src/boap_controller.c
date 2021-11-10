@@ -47,8 +47,6 @@ PRIVATE SBoapTouchscreen * s_touchscreenHandle = NULL;
 PRIVATE esp_timer_handle_t s_timerHandle;
 
 PRIVATE void BoapControllerLogCommitCallback(u32 len, const char * header, const char * payload, const char * trailer);
-PRIVATE void BoapControllerAcpTxMessageDroppedHook(TBoapAcpNodeId receiver, EBoapAcpTxMessageDroppedReason reason);
-PRIVATE void BoapControllerAcpRxMessageDroppedHook(TBoapAcpNodeId sender, EBoapAcpRxMessageDroppedReason reason);
 PRIVATE void BoapControllerMessageHandlerThreadEntryPoint(void * arg);
 PRIVATE void BoapControllerTimerCallback(void * arg);
 
@@ -61,49 +59,33 @@ PUBLIC EBoapRet BoapControllerInit(void) {
     EBoapRet status = EBoapRet_Ok;
     TaskHandle_t messageHandlerThreadHandle;
 
-    /* Register hooks */
-    BoapLogRegisterCommitCallback(BoapControllerLogCommitCallback);
-    BoapAcpRegisterTxMessageDroppedHook(BoapControllerAcpTxMessageDroppedHook);
-    BoapAcpRegisterRxMessageDroppedHook(BoapControllerAcpRxMessageDroppedHook);
+    /* Initialize the ACP stack */
+    if (unlikely(BoapAcpInit(BOAP_CONTROLLER_ACP_QUEUE_LEN, BOAP_CONTROLLER_ACP_QUEUE_LEN))) {
 
-    BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): Application startup in progress. Instantiating the touchscreen object...", __FUNCTION__);
-
-    /* Instantiate the touchscreen object */
-    s_touchscreenHandle = BoapTouchscreenCreate(BOAP_CONTROLLER_SCREEN_DIMENSION_X_AXIS_MM,
-                                                BOAP_CONTROLLER_SCREEN_DIMENSION_Y_AXIS_MM,
-                                                BOAP_CONTROLLER_ADC_LOW_X_AXIS,
-                                                BOAP_CONTROLLER_ADC_HIGH_X_AXIS,
-                                                BOAP_CONTROLLER_ADC_LOW_Y_AXIS,
-                                                BOAP_CONTROLLER_ADC_HIGH_Y_AXIS,
-                                                BOAP_CONTROLLER_ADC_CHANNEL_X_AXIS,
-                                                BOAP_CONTROLLER_ADC_CHANNEL_Y_AXIS,
-                                                BOAP_CONTROLLER_GND_PIN_X_AXIS,
-                                                BOAP_CONTROLLER_HIGH_Z_PIN_X_AXIS,
-                                                BOAP_CONTROLLER_ADC_MULTISAMPLING);
-    if (unlikely(NULL == s_touchscreenHandle)) {
-
-        BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to instantiate the touchscreen object");
         status = EBoapRet_Error;
-
-    } else {
-
-        BoapLogPrint(EBoapLogSeverityLevel_Info, "Touchscreen object created");
     }
 
     IF_OK(status) {
 
-        BoapLogPrint(EBoapLogSeverityLevel_Info, "Initializing the ACP stack...");
-        /* Initialize the ACP stack */
-        if (unlikely(BoapAcpInit(BOAP_CONTROLLER_ACP_QUEUE_LEN, BOAP_CONTROLLER_ACP_QUEUE_LEN))) {
+        BoapLogRegisterCommitCallback(BoapControllerLogCommitCallback);
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): ACP stack up and running. Logging is now possible. Instantiating the touchscreen object...", __FUNCTION__);
 
-            BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to initialize the ACP stack");
-            /* Cleanup */
-            BoapTouchscreenDestroy(s_touchscreenHandle);
+        /* Instantiate the touchscreen object */
+        s_touchscreenHandle = BoapTouchscreenCreate(BOAP_CONTROLLER_SCREEN_DIMENSION_X_AXIS_MM,
+                                                    BOAP_CONTROLLER_SCREEN_DIMENSION_Y_AXIS_MM,
+                                                    BOAP_CONTROLLER_ADC_LOW_X_AXIS,
+                                                    BOAP_CONTROLLER_ADC_HIGH_X_AXIS,
+                                                    BOAP_CONTROLLER_ADC_LOW_Y_AXIS,
+                                                    BOAP_CONTROLLER_ADC_HIGH_Y_AXIS,
+                                                    BOAP_CONTROLLER_ADC_CHANNEL_X_AXIS,
+                                                    BOAP_CONTROLLER_ADC_CHANNEL_Y_AXIS,
+                                                    BOAP_CONTROLLER_GND_PIN_X_AXIS,
+                                                    BOAP_CONTROLLER_HIGH_Z_PIN_X_AXIS,
+                                                    BOAP_CONTROLLER_ADC_MULTISAMPLING);
+        if (unlikely(NULL == s_touchscreenHandle)) {
+
+            BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to instantiate the touchscreen object");
             status = EBoapRet_Error;
-
-        } else {
-
-            BoapLogPrint(EBoapLogSeverityLevel_Info, "ACP stack successfully initialized. Own node ID is 0x%02X", BoapAcpGetOwnNodeId());
         }
     }
 
@@ -121,13 +103,7 @@ PUBLIC EBoapRet BoapControllerInit(void) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the message handler thread");
             /* Cleanup */
-            BoapAcpDeinit();
             BoapTouchscreenDestroy(s_touchscreenHandle);
-            status = EBoapRet_Error;
-
-        } else {
-
-            BoapLogPrint(EBoapLogSeverityLevel_Info, "Message handler thread created successfully");
         }
     }
 
@@ -146,7 +122,6 @@ PUBLIC EBoapRet BoapControllerInit(void) {
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the timer");
             /* Cleanup */
             vTaskDelete(messageHandlerThreadHandle);
-            BoapAcpDeinit();
             BoapTouchscreenDestroy(s_touchscreenHandle);
             status = EBoapRet_Error;
 
@@ -163,18 +138,14 @@ PUBLIC EBoapRet BoapControllerInit(void) {
 
 PRIVATE void BoapControllerLogCommitCallback(u32 len, const char * header, const char * payload, const char * trailer) {
 
-    (void) len;
-    (void) printf("%s%s%s", header, payload, trailer);
-}
+    /* Wrap the log entry in an ACP message */
+    void * message = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_PC, BOAP_ACP_LOG_COMMIT, sizeof(SBoapAcpLogCommit));
+    if (likely(NULL != message)) {
 
-PRIVATE void BoapControllerAcpTxMessageDroppedHook(TBoapAcpNodeId receiver, EBoapAcpTxMessageDroppedReason reason) {
-
-    BoapLogPrint(EBoapLogSeverityLevel_Error, "Dropped outgoing ACP message to 0x%02X (reason: %d)", receiver, reason);
-}
-
-PRIVATE void BoapControllerAcpRxMessageDroppedHook(TBoapAcpNodeId sender, EBoapAcpRxMessageDroppedReason reason) {
-
-    BoapLogPrint(EBoapLogSeverityLevel_Error, "Dropped incoming ACP message fromo 0x%02X (reason: %d)", sender, reason);
+        SBoapAcpLogCommit * msgPayload = (SBoapAcpLogCommit *) BoapAcpMsgGetPayload(message);
+        (void) snprintf(msgPayload->Message, sizeof(msgPayload->Message), "%s%s%s", header, payload, trailer);
+        BoapAcpMsgSend(message);
+    }
 }
 
 PRIVATE void BoapControllerMessageHandlerThreadEntryPoint(void * arg) {

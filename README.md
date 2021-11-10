@@ -14,15 +14,32 @@ git clone https://github.com/espressif/esp-idf
 
 3. Set the MAC addresses of specific nodes in file `env.cmake` (see `env.cmake.example` for reference)
 
-4. Build a selected component, e.g. *plant*
+4. Flash the boards and monitor their startup
 
 ```bash
 cd plant
 idf.py build
+idf.py -p (PORT) flash monitor
+cd ../router
+idf.py build
+idf.py -p (PORT) flash monitor
+cd ../controller
+idf.py build
+idf.py -p (PORT) flash monitor
+cd ..
 ```
 
-5. Flash the board and monitor its startup
+5. Set up a Python virtual environment and install dependencies
 
 ```bash
-idf.py -p (PORT) flash monitor
+cd python
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+6. Start the Python GUI application
+
+```bash
+python boap.py -p (ROUTER PORT) -e stdout
 ```

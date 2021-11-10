@@ -31,6 +31,7 @@ typedef struct SBoapControlStateContext {
 
 #define BOAP_CONTROL_SAMPLING_PERIOD_TO_TIMER_PERIOD(TS)  R32_SECONDS_TO_U64_US( (TS) / 2.0f )
 #define BOAP_CONTROL_SAMPLING_PERIOD_DEFAULT              0.05
+#define BOAP_CONTROL_GET_SAMPLE_NUMBER()                  ( s_timerOverflows / 2U )
 
 #define BOAP_CONTROL_SATURATION_THRESHOLD_DEFAULT         ( asin(1) / 3.0 )
 #define BOAP_CONTROL_PROPORTIONAL_GAIN_DEFAULT            1.0f
@@ -84,17 +85,20 @@ PRIVATE SBoapControlStateContext s_stateContexts[] = {
 };
 PRIVATE SBoapTouchscreen * s_touchscreenHandle = NULL;
 PRIVATE esp_timer_handle_t s_timerHandle = NULL;
+PRIVATE u64 s_timerOverflows = 0;
 PRIVATE bool s_inHandlerMarker = false;
 PRIVATE r32 s_samplingPeriod = 0.0f;
 
 PRIVATE void BoapControlTimerCallback(void * arg);
 PRIVATE void BoapControlStateTransition(void);
-PRIVATE void BoapControlTraceBallPosition(EBoapAxis axisId, r32 position);
+PRIVATE void BoapControlTraceBallPosition(r32 xSetpoint, r32 xPosition, r32 ySetpoint, r32 yPosition);
 PRIVATE void BoapControlHandlePingReq(void * request);
 PRIVATE void BoapControlHandleNewSetpointReq(void * request);
 PRIVATE void BoapControlHandleGetPidSettingsReq(void * request);
 PRIVATE void BoapControlHandleSetPidSettingsReq(void * request);
+PRIVATE void BoapControlHandleGetSamplingPeriodReq(void * request);
 PRIVATE void BoapControlHandleSetSamplingPeriodReq(void * request);
+PRIVATE void BoapControlHandleGetFilterOrderReq(void * request);
 PRIVATE void BoapControlHandleSetFilterOrderReq(void * request);
 
 /**
@@ -336,6 +340,11 @@ PUBLIC void BoapControlHandleTimerExpired(void) {
         [EBoapAxis_Y] = 0.0f
     };
 
+    /* Trace context - save the X-axis state to be available in the next iteration (Y-axis) */
+    static bool xPositionAsserted = false;
+    static r32 xPositionFilteredMm = 0.0f;
+    static r32 xSetpoint = 0.0f;
+
     /* Mark entry into the event handler */
     s_inHandlerMarker = true;
 
@@ -365,11 +374,24 @@ PUBLIC void BoapControlHandleTimerExpired(void) {
         /* Set servo position */
         BoapServoSetPosition(s_stateContexts[s_currentStateAxis].ServoObject, regulatorOutputRad);
 
-        /* Send the trace message */
-        BoapControlTraceBallPosition(s_currentStateAxis, filteredPositionMm);
+        if (EBoapAxis_Y == s_currentStateAxis && xPositionAsserted) {
+
+            /* Send the trace message */
+            BoapControlTraceBallPosition(xSetpoint, xPositionFilteredMm,
+                BoapPidGetSetpoint(s_stateContexts[EBoapAxis_Y].PidRegulator), filteredPositionMm);
+        }
+
+        /* Branchless assign, it is ok to overwrite the X-axis data once the trace message is sent */
+        xPositionFilteredMm = filteredPositionMm;
+        xPositionAsserted = true;
+        xSetpoint = BoapPidGetSetpoint(s_stateContexts[EBoapAxis_X].PidRegulator);
 
     } else {  /* Actual no touch condition */
 
+        if (EBoapAxis_X == s_currentStateAxis) {
+
+            xPositionAsserted = false;
+        }
         /* Level the plate and clear the state */
         BoapServoSetPosition(s_stateContexts[s_currentStateAxis].ServoObject, 0.0f);
         BoapFilterReset(s_stateContexts[s_currentStateAxis].MovingAverageFilter);
@@ -411,9 +433,19 @@ PUBLIC void BoapControlHandleAcpMessage(void * message) {
         BoapControlHandleSetPidSettingsReq(message);
         break;
 
+    case BOAP_ACP_GET_SAMPLING_PERIOD_REQ:
+
+        BoapControlHandleGetSamplingPeriodReq(message);
+        break;
+
     case BOAP_ACP_SET_SAMPLING_PERIOD_REQ:
 
         BoapControlHandleSetSamplingPeriodReq(message);
+        break;
+
+    case BOAP_ACP_GET_FILTER_ORDER_REQ:
+
+        BoapControlHandleGetFilterOrderReq(message);
         break;
 
     case BOAP_ACP_SET_FILTER_ORDER_REQ:
@@ -434,6 +466,8 @@ PRIVATE void BoapControlTimerCallback(void * arg) {
 
     (void) arg;
 
+    s_timerOverflows++;
+
     if (likely(false == s_inHandlerMarker)) {
 
         (void) BoapEventSend(EBoapEventType_TimerExpired, NULL);
@@ -451,16 +485,18 @@ PRIVATE void BoapControlStateTransition(void) {
     s_currentStateAxis = !s_currentStateAxis;
 }
 
-PRIVATE void BoapControlTraceBallPosition(EBoapAxis axisId, r32 position) {
+PRIVATE void BoapControlTraceBallPosition(r32 xSetpoint, r32 xPosition, r32 ySetpoint, r32 yPosition) {
 
     /* Send the trace indication message */
     void * message = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_PC, BOAP_ACP_BALL_TRACE_IND, sizeof(SBoapAcpBallTraceInd));
     if (likely(NULL != message)) {
 
         SBoapAcpBallTraceInd * payload = (SBoapAcpBallTraceInd *) BoapAcpMsgGetPayload(message);
-        payload->AxisId = axisId;
-        payload->Setpoint = BoapPidGetSetpoint(s_stateContexts[axisId].PidRegulator);
-        payload->Position = position;
+        payload->SampleNumber = BOAP_CONTROL_GET_SAMPLE_NUMBER();
+        payload->SetpointX = xSetpoint;
+        payload->PositionX = xPosition;
+        payload->SetpointY = ySetpoint;
+        payload->PositionY = yPosition;
         BoapAcpMsgSend(message);
     }
 }
@@ -471,6 +507,7 @@ PRIVATE void BoapControlHandlePingReq(void * request) {
     void * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_PING_RESP, 0);
     if (likely(NULL != response)) {
 
+        BoapLogPrint(EBoapLogSeverityLevel_Debug, "Responding to ping request from 0x%02X...", BoapAcpMsgGetSender(request));
         BoapAcpMsgSend(response);
 
     } else {
@@ -553,6 +590,21 @@ PRIVATE void BoapControlHandleSetPidSettingsReq(void * request) {
     BoapAcpMsgDestroy(request);
 }
 
+PRIVATE void BoapControlHandleGetSamplingPeriodReq(void * request) {
+
+    /* Send the response message */
+    void * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_GET_SAMPLING_PERIOD_RESP, sizeof(SBoapAcpGetSamplingPeriodResp));
+    if (likely(NULL != response)) {
+
+        SBoapAcpGetSamplingPeriodResp * respPayload = (SBoapAcpGetSamplingPeriodResp *) BoapAcpMsgGetPayload(response);
+        respPayload->SamplingPeriod = s_samplingPeriod;
+        BoapAcpMsgSend(response);
+    }
+
+    /* Destroy the request message */
+    BoapAcpMsgDestroy(request);
+}
+
 PRIVATE void BoapControlHandleSetSamplingPeriodReq(void * request) {
 
     SBoapAcpSetSamplingPeriodReq * reqPayload = (SBoapAcpSetSamplingPeriodReq *) BoapAcpMsgGetPayload(request);
@@ -587,6 +639,24 @@ PRIVATE void BoapControlHandleSetSamplingPeriodReq(void * request) {
     } else {
 
         BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create BOAP_ACP_SET_SAMPLING_PERIOD_RESP");
+    }
+
+    /* Destroy the request message */
+    BoapAcpMsgDestroy(request);
+}
+
+PRIVATE void BoapControlHandleGetFilterOrderReq(void * request) {
+
+    SBoapAcpGetFilterOrderReq * reqPayload = (SBoapAcpGetFilterOrderReq *) BoapAcpMsgGetPayload(request);
+
+    /* Send the response message */
+    void * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_GET_FILTER_ORDER_RESP, sizeof(SBoapAcpGetFilterOrderResp));
+    if (likely(NULL != response)) {
+
+        SBoapAcpGetFilterOrderResp * respPayload = (SBoapAcpGetFilterOrderResp *) BoapAcpMsgGetPayload(response);
+        respPayload->AxisId = reqPayload->AxisId;
+        respPayload->FilterOrder = BoapFilterGetOrder(s_stateContexts[reqPayload->AxisId].MovingAverageFilter);
+        BoapAcpMsgSend(response);
     }
 
     /* Destroy the request message */

@@ -19,15 +19,22 @@
 #define BOAP_ACP_GET_PID_SETTINGS_RESP     ( (TBoapAcpMsgId) 0x05 )
 #define BOAP_ACP_SET_PID_SETTINGS_REQ      ( (TBoapAcpMsgId) 0x06 )
 #define BOAP_ACP_SET_PID_SETTINGS_RESP     ( (TBoapAcpMsgId) 0x07 )
-#define BOAP_ACP_SET_SAMPLING_PERIOD_REQ   ( (TBoapAcpMsgId) 0x08 )
-#define BOAP_ACP_SET_SAMPLING_PERIOD_RESP  ( (TBoapAcpMsgId) 0x09 )
-#define BOAP_ACP_SET_FILTER_ORDER_REQ      ( (TBoapAcpMsgId) 0x0A )
-#define BOAP_ACP_SET_FILTER_ORDER_RESP     ( (TBoapAcpMsgId) 0x0B )
+#define BOAP_ACP_GET_SAMPLING_PERIOD_REQ   ( (TBoapAcpMsgId) 0x08 )
+#define BOAP_ACP_GET_SAMPLING_PERIOD_RESP  ( (TBoapAcpMsgId) 0x09 )
+#define BOAP_ACP_SET_SAMPLING_PERIOD_REQ   ( (TBoapAcpMsgId) 0x0A )
+#define BOAP_ACP_SET_SAMPLING_PERIOD_RESP  ( (TBoapAcpMsgId) 0x0B )
+#define BOAP_ACP_GET_FILTER_ORDER_REQ      ( (TBoapAcpMsgId) 0x0C )
+#define BOAP_ACP_GET_FILTER_ORDER_RESP     ( (TBoapAcpMsgId) 0x0D )
+#define BOAP_ACP_SET_FILTER_ORDER_REQ      ( (TBoapAcpMsgId) 0x0E )
+#define BOAP_ACP_SET_FILTER_ORDER_RESP     ( (TBoapAcpMsgId) 0x0F )
+#define BOAP_ACP_LOG_COMMIT                ( (TBoapAcpMsgId) 0x10 )
 
 typedef struct SBoapAcpBallTraceInd {
-    EBoapAxis AxisId;
-    r32 Setpoint;
-    r32 Position;
+    u64 SampleNumber;
+    r32 SetpointX;
+    r32 PositionX;
+    r32 SetpointY;
+    r32 PositionY;
 } SBoapAcpBallTraceInd;
 
 typedef struct SBoapAcpNewSetpointReq {
@@ -63,6 +70,10 @@ typedef struct SBoapAcpSetPidSettingsResp {
     r32 NewDerivativeGain;
 } SBoapAcpSetPidSettingsResp;
 
+typedef struct SBoapAcpGetSamplingPeriodResp {
+    r32 SamplingPeriod;
+} SBoapAcpGetSamplingPeriodResp;
+
 typedef struct SBoapAcpSetSamplingPeriodReq {
     r32 SamplingPeriod;
 } SBoapAcpSetSamplingPeriodReq;
@@ -71,6 +82,15 @@ typedef struct SBoapAcpSetSamplingPeriodResp {
     r32 OldSamplingPeriod;
     r32 NewSamplingPeriod;
 } SBoapAcpSetSamplingPeriodResp;
+
+typedef struct SBoapAcpGetFilterOrderReq {
+    EBoapAxis AxisId;
+} SBoapAcpGetFilterOrderReq;
+
+typedef struct SBoapAcpGetFilterOrderResp {
+    EBoapAxis AxisId;
+    u32 FilterOrder;
+} SBoapAcpGetFilterOrderResp;
 
 typedef struct SBoapAcpSetFilterOrderReq {
     EBoapAxis AxisId;
@@ -83,5 +103,9 @@ typedef struct SBoapAcpSetFilterOrderResp {
     u32 OldFilterOrder;
     u32 NewFilterOrder;
 } SBoapAcpSetFilterOrderResp;
+
+typedef struct SBoapAcpLogCommit {
+    char Message[200];
+} SBoapAcpLogCommit;
 
 #endif /* BOAP_MESSAGES_H */

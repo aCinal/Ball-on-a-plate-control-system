@@ -25,12 +25,16 @@ typedef struct SBoapFilter {
  */
 PUBLIC SBoapFilter * BoapFilterCreate(u32 filterOrder) {
 
-    ASSERT(filterOrder > 0, "Filter order be strictly positive");
-    SBoapFilter * handle = BoapMemAlloc(BOAP_FILTER_HANDLE_SIZE(filterOrder));
-    if (likely(NULL != handle)) {
+    SBoapFilter * handle = NULL;
 
-        (void) memset(handle, 0, BOAP_FILTER_HANDLE_SIZE(filterOrder));
-        handle->FilterOrder = filterOrder;
+    if (likely(filterOrder > 0)) {
+
+        handle = BoapMemAlloc(BOAP_FILTER_HANDLE_SIZE(filterOrder));
+        if (likely(NULL != handle)) {
+
+            (void) memset(handle, 0, BOAP_FILTER_HANDLE_SIZE(filterOrder));
+            handle->FilterOrder = filterOrder;
+        }
     }
 
     return handle;
