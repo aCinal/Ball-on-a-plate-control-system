@@ -37,37 +37,26 @@ typedef struct SBoapControlStateContext {
 #define BOAP_CONTROL_PROPORTIONAL_GAIN_DEFAULT            1.0f
 #define BOAP_CONTROL_INTEGRAL_GAIN_DEFAULT                0.0f
 #define BOAP_CONTROL_DERIVATIVE_GAIN_DEFAULT              0.5f
-
 #define BOAP_CONTROL_FILTER_ORDER_DEFAULT                 5
 
-#define BOAP_CONTROL_SCREEN_DIMENSION_X_AXIS_MM           322.0f
-#define BOAP_CONTROL_SCREEN_DIMENSION_Y_AXIS_MM           247.0f
 #define BOAP_CONTROL_SET_POINT_X_AXIS_MM_DEFAULT          0
 #define BOAP_CONTROL_SET_POINT_Y_AXIS_MM_DEFAULT          0
 
 #define BOAP_CONTROL_ADC_MULTISAMPLING                    1
 #define BOAP_CONTROL_GPIO_NUM_TO_CHANNEL(GPIO_NUM)        ADC1_GPIO##GPIO_NUM##_CHANNEL
 #define BOAP_CONTROL_GPIO_NUM(GPIO_NUM)                   GPIO_NUM_##GPIO_NUM
-#define BOAP_CONTROL_GND_PIN_X_AXIS_NUM                   26
-#define BOAP_CONTROL_HIGH_Z_PIN_X_AXIS_NUM                27
-#define BOAP_CONTROL_ADC_PIN_X_AXIS_NUM                   32
-#define BOAP_CONTROL_ADC_PIN_Y_AXIS_NUM                   33
 #define BOAP_CONTROL_GND_PIN_X_AXIS                       MACRO_EXPAND(BOAP_CONTROL_GPIO_NUM, BOAP_CONTROL_GND_PIN_X_AXIS_NUM)
 #define BOAP_CONTROL_HIGH_Z_PIN_X_AXIS                    MACRO_EXPAND(BOAP_CONTROL_GPIO_NUM, BOAP_CONTROL_HIGH_Z_PIN_X_AXIS_NUM)
 #define BOAP_CONTROL_ADC_CHANNEL_X_AXIS                   MACRO_EXPAND(BOAP_CONTROL_GPIO_NUM_TO_CHANNEL, BOAP_CONTROL_ADC_PIN_X_AXIS_NUM)
 #define BOAP_CONTROL_ADC_CHANNEL_Y_AXIS                   MACRO_EXPAND(BOAP_CONTROL_GPIO_NUM_TO_CHANNEL, BOAP_CONTROL_ADC_PIN_Y_AXIS_NUM)
-#define BOAP_CONTROL_ADC_LOW_X_AXIS                       270
-#define BOAP_CONTROL_ADC_HIGH_X_AXIS                      3800
-#define BOAP_CONTROL_ADC_LOW_Y_AXIS                       380
-#define BOAP_CONTROL_ADC_HIGH_Y_AXIS                      3500
 
 #define BOAP_CONTROL_SPURIOUS_NO_TOUCH_TOLERANCE          5
 
 #define BOAP_CONTROL_PWM_FREQUENCY                        50
 #define BOAP_CONTROL_PWM_UNIT_X_AXIS                      MCPWM_UNIT_0
 #define BOAP_CONTROL_PWM_UNIT_Y_AXIS                      MCPWM_UNIT_1
-#define BOAP_CONTROL_PWM_PIN_X_AXIS                       BOAP_CONTROL_GPIO_NUM(18)
-#define BOAP_CONTROL_PWM_PIN_Y_AXIS                       BOAP_CONTROL_GPIO_NUM(19)
+#define BOAP_CONTROL_PWM_PIN_X_AXIS                       MACRO_EXPAND(BOAP_CONTROL_GPIO_NUM, BOAP_CONTROL_PWM_PIN_X_AXIS_NUM)
+#define BOAP_CONTROL_PWM_PIN_Y_AXIS                       MACRO_EXPAND(BOAP_CONTROL_GPIO_NUM, BOAP_CONTROL_PWM_PIN_Y_AXIS_NUM)
 #define BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US                500
 #define BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US                2500
 #define BOAP_CONTROL_SERVO_MAX_ANGLE_RAD                  asin(1)
@@ -377,8 +366,8 @@ PUBLIC void BoapControlHandleTimerExpired(void) {
         if (EBoapAxis_Y == s_currentStateAxis && xPositionAsserted) {
 
             /* Send the trace message */
-            BoapControlTraceBallPosition(xSetpoint, xPositionFilteredMm,
-                BoapPidGetSetpoint(s_stateContexts[EBoapAxis_Y].PidRegulator), filteredPositionMm);
+           BoapControlTraceBallPosition(xSetpoint, xPositionFilteredMm,
+               BoapPidGetSetpoint(s_stateContexts[EBoapAxis_Y].PidRegulator), filteredPositionMm);
         }
 
         /* Branchless assign, it is ok to overwrite the X-axis data once the trace message is sent */

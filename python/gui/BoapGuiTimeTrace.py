@@ -1,15 +1,17 @@
 # Author: Adrian Cinal
 
-from pyqtgraph import PlotItem, GraphicsLayoutWidget
-from numpy import empty
+import pyqtgraph as pg
 
-class BoapGuiTimeTrace(GraphicsLayoutWidget):
+class BoapGuiTimeTrace(pg.GraphicsLayoutWidget):
+    SETPOINT_COLOR = (0, 255, 0)
+    POSITION_COLOR = (255, 0, 0)
+
     class TimeTraceImpl:
-        def __init__(self, plotItem, bufferSize):
+        def __init__(self, plotItem, bufferSize, color):
             self.bufferSize = bufferSize
             self.valueBuffer = []
             self.timeBuffer = []
-            self.curve = plotItem.plot()
+            self.curve = plotItem.plot(pen=pg.mkPen(color=color))
             self.pointer = 0
 
         def Update(self, sampleNumber, value):
@@ -46,10 +48,10 @@ class BoapGuiTimeTrace(GraphicsLayoutWidget):
 
         # Initialize the time trace buffers
         self.traces = {}
-        self.traces['xSetpoint'] = self.TimeTraceImpl(self.xTimeTracePlot, bufferSize)
-        self.traces['ySetpoint'] = self.TimeTraceImpl(self.yTimeTracePlot, bufferSize)
-        self.traces['xPosition'] = self.TimeTraceImpl(self.xTimeTracePlot, bufferSize)
-        self.traces['yPosition'] = self.TimeTraceImpl(self.yTimeTracePlot, bufferSize)
+        self.traces['xSetpoint'] = self.TimeTraceImpl(self.xTimeTracePlot, bufferSize, self.SETPOINT_COLOR)
+        self.traces['ySetpoint'] = self.TimeTraceImpl(self.yTimeTracePlot, bufferSize, self.SETPOINT_COLOR)
+        self.traces['xPosition'] = self.TimeTraceImpl(self.xTimeTracePlot, bufferSize, self.POSITION_COLOR)
+        self.traces['yPosition'] = self.TimeTraceImpl(self.yTimeTracePlot, bufferSize, self.POSITION_COLOR)
 
     def Update(self, sampleNumber, xSetpoint, xPosition, ySetpoint, yPosition):
         self.traces['xSetpoint'].Update(sampleNumber, xSetpoint)
