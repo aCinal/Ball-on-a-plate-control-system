@@ -12,7 +12,7 @@ git clone https://github.com/espressif/esp-idf
 
 2. Set up the ESP-IDF environment as described here: `https://github.com/espressif/esp-idf`
 
-3. Set the hardware-specific parameters in file `env.cmake` (see `env.cmake.example` for reference)
+3. Set hardware-specific parameters in file `env.cmake` (see `env.cmake.example` for reference)
 
 4. Flash the boards and monitor their startup
 

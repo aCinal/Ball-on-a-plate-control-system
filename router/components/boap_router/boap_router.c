@@ -7,15 +7,14 @@
 #include <boap_router.h>
 #include <boap_acp.h>
 #include <boap_common.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
-#include "driver/uart.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <freertos/queue.h>
+#include <driver/uart.h>
 
 #define BOAP_ROUTER_ACP_QUEUE_LEN                  16
 
 #define BOAP_ROUTER_UART_NUM                       UART_NUM_0
-#define BOAP_ROUTER_UART_BAUD_RATE                 115200
 #define BOAP_ROUTER_UART_DATA_BITS                 UART_DATA_8_BITS
 #define BOAP_ROUTER_UART_PARITY                    UART_PARITY_DISABLE
 #define BOAP_ROUTER_UART_STOP_BITS                 UART_STOP_BITS_1

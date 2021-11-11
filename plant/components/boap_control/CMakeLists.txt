@@ -10,7 +10,7 @@ idf_component_register(SRCS "boap_control.c"
                                 boap_acp
                                 boap_stats)
 
-# Define touchscreen parameters
+# Define touchscreen config
 target_compile_definitions(${COMPONENT_LIB}
     PRIVATE BOAP_CONTROL_GND_PIN_X_AXIS_NUM=${BOAP_CONTROL_GND_PIN_X_AXIS_NUM}
     PRIVATE BOAP_CONTROL_HIGH_Z_PIN_X_AXIS_NUM=${BOAP_CONTROL_HIGH_Z_PIN_X_AXIS_NUM}
