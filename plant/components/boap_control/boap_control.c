@@ -16,9 +16,6 @@
 #include <boap_messages.h>
 #include <boap_stats.h>
 #include <esp_timer.h>
-#include <hal/adc_hal.h>
-#include <driver/adc.h>
-#include <driver/gpio.h>
 #include <driver/mcpwm.h>
 #include <stdbool.h>
 #include <math.h>
@@ -33,7 +30,7 @@ typedef struct SBoapControlStateContext {
 #define BOAP_CONTROL_SAMPLING_PERIOD_DEFAULT              0.05
 #define BOAP_CONTROL_GET_SAMPLE_NUMBER()                  ( s_timerOverflows / 2U )
 
-#define BOAP_CONTROL_SATURATION_THRESHOLD_DEFAULT         ( asin(1) / 3.0 )
+#define BOAP_CONTROL_SATURATION_THRESHOLD                 ( asin(1) / 3.0 )
 #define BOAP_CONTROL_PROPORTIONAL_GAIN_DEFAULT            1.0f
 #define BOAP_CONTROL_INTEGRAL_GAIN_DEFAULT                0.0f
 #define BOAP_CONTROL_DERIVATIVE_GAIN_DEFAULT              0.5f
@@ -43,20 +40,18 @@ typedef struct SBoapControlStateContext {
 #define BOAP_CONTROL_SET_POINT_Y_AXIS_MM_DEFAULT          0
 
 #define BOAP_CONTROL_ADC_MULTISAMPLING                    1
-#define BOAP_CONTROL_GPIO_NUM_TO_CHANNEL(GPIO_NUM)        ADC1_GPIO##GPIO_NUM##_CHANNEL
-#define BOAP_CONTROL_GPIO_NUM(GPIO_NUM)                   GPIO_NUM_##GPIO_NUM
-#define BOAP_CONTROL_GND_PIN_X_AXIS                       MACRO_EXPAND(BOAP_CONTROL_GPIO_NUM, BOAP_CONTROL_GND_PIN_X_AXIS_NUM)
-#define BOAP_CONTROL_HIGH_Z_PIN_X_AXIS                    MACRO_EXPAND(BOAP_CONTROL_GPIO_NUM, BOAP_CONTROL_HIGH_Z_PIN_X_AXIS_NUM)
-#define BOAP_CONTROL_ADC_CHANNEL_X_AXIS                   MACRO_EXPAND(BOAP_CONTROL_GPIO_NUM_TO_CHANNEL, BOAP_CONTROL_ADC_PIN_X_AXIS_NUM)
-#define BOAP_CONTROL_ADC_CHANNEL_Y_AXIS                   MACRO_EXPAND(BOAP_CONTROL_GPIO_NUM_TO_CHANNEL, BOAP_CONTROL_ADC_PIN_Y_AXIS_NUM)
+#define BOAP_CONTROL_GND_PIN_X_AXIS                       MACRO_EXPAND(BOAP_GPIO_NUM, BOAP_CONTROL_GND_PIN_X_AXIS_NUM)
+#define BOAP_CONTROL_HIGH_Z_PIN_X_AXIS                    MACRO_EXPAND(BOAP_GPIO_NUM, BOAP_CONTROL_HIGH_Z_PIN_X_AXIS_NUM)
+#define BOAP_CONTROL_ADC_CHANNEL_X_AXIS                   MACRO_EXPAND(BOAP_TOUCHSCREEN_GPIO_NUM_TO_CHANNEL, BOAP_CONTROL_ADC_PIN_X_AXIS_NUM)
+#define BOAP_CONTROL_ADC_CHANNEL_Y_AXIS                   MACRO_EXPAND(BOAP_TOUCHSCREEN_GPIO_NUM_TO_CHANNEL, BOAP_CONTROL_ADC_PIN_Y_AXIS_NUM)
 
 #define BOAP_CONTROL_SPURIOUS_NO_TOUCH_TOLERANCE          5
 
 #define BOAP_CONTROL_PWM_FREQUENCY                        50
 #define BOAP_CONTROL_PWM_UNIT_X_AXIS                      MCPWM_UNIT_0
 #define BOAP_CONTROL_PWM_UNIT_Y_AXIS                      MCPWM_UNIT_1
-#define BOAP_CONTROL_PWM_PIN_X_AXIS                       MACRO_EXPAND(BOAP_CONTROL_GPIO_NUM, BOAP_CONTROL_PWM_PIN_X_AXIS_NUM)
-#define BOAP_CONTROL_PWM_PIN_Y_AXIS                       MACRO_EXPAND(BOAP_CONTROL_GPIO_NUM, BOAP_CONTROL_PWM_PIN_Y_AXIS_NUM)
+#define BOAP_CONTROL_PWM_PIN_X_AXIS                       MACRO_EXPAND(BOAP_GPIO_NUM, BOAP_CONTROL_PWM_PIN_X_AXIS_NUM)
+#define BOAP_CONTROL_PWM_PIN_Y_AXIS                       MACRO_EXPAND(BOAP_GPIO_NUM, BOAP_CONTROL_PWM_PIN_Y_AXIS_NUM)
 #define BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US                500
 #define BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US                2500
 #define BOAP_CONTROL_SERVO_MAX_ANGLE_RAD                  asin(1)
@@ -180,7 +175,7 @@ PUBLIC EBoapRet BoapControlInit(void) {
                                                                              BOAP_CONTROL_INTEGRAL_GAIN_DEFAULT,
                                                                              BOAP_CONTROL_DERIVATIVE_GAIN_DEFAULT,
                                                                              s_samplingPeriod,
-                                                                             BOAP_CONTROL_SATURATION_THRESHOLD_DEFAULT);
+                                                                             BOAP_CONTROL_SATURATION_THRESHOLD);
         if (unlikely(NULL == s_stateContexts[EBoapAxis_X].PidRegulator)) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the PID regulator for the x-axis");
@@ -204,7 +199,7 @@ PUBLIC EBoapRet BoapControlInit(void) {
                                                                              BOAP_CONTROL_INTEGRAL_GAIN_DEFAULT,
                                                                              BOAP_CONTROL_DERIVATIVE_GAIN_DEFAULT,
                                                                              s_samplingPeriod,
-                                                                             BOAP_CONTROL_SATURATION_THRESHOLD_DEFAULT);
+                                                                             BOAP_CONTROL_SATURATION_THRESHOLD);
         if (unlikely(NULL == s_stateContexts[EBoapAxis_Y].PidRegulator)) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the PID regulator for the y-axis");
@@ -324,10 +319,6 @@ PUBLIC void BoapControlHandleTimerExpired(void) {
         [EBoapAxis_X] = 0,
         [EBoapAxis_Y] = 0
     };
-    static r32 unfilteredPositionMm[] = {
-        [EBoapAxis_X] = 0.0f,
-        [EBoapAxis_Y] = 0.0f
-    };
 
     /* Trace context - save the X-axis state to be available in the next iteration (Y-axis) */
     static bool xPositionAsserted = false;
@@ -338,9 +329,9 @@ PUBLIC void BoapControlHandleTimerExpired(void) {
     s_inHandlerMarker = true;
 
     /* Run the ADC conversion */
-    bool isBallOnThePlate = BoapTouchscreenGetPosition(s_touchscreenHandle, s_currentStateAxis, &unfilteredPositionMm[s_currentStateAxis]);
+    SBoapTouchscreenReading * touchscreenReading = BoapTouchscreenGetPosition(s_touchscreenHandle, s_currentStateAxis);
 
-    if (unlikely(!isBallOnThePlate)) {
+    if (unlikely(NULL == touchscreenReading)) {
 
         /* Record the no touch condition */
         noTouchCounter[s_currentStateAxis]++;
@@ -352,12 +343,12 @@ PUBLIC void BoapControlHandleTimerExpired(void) {
     }
 
     /* Assert the ball is still on the plate */
-    if (likely(isBallOnThePlate || (noTouchCounter[s_currentStateAxis] < BOAP_CONTROL_SPURIOUS_NO_TOUCH_TOLERANCE))) {
+    if (likely((NULL != touchscreenReading) || (noTouchCounter[s_currentStateAxis] < BOAP_CONTROL_SPURIOUS_NO_TOUCH_TOLERANCE))) {
 
         /* On spurious no touch condition, unfilteredPositionMm does not change, so use its old value */
 
         /* Filter the sample */
-        r32 filteredPositionMm = BoapFilterGetSample(s_stateContexts[s_currentStateAxis].MovingAverageFilter, unfilteredPositionMm[s_currentStateAxis]);
+        r32 filteredPositionMm = BoapFilterGetSample(s_stateContexts[s_currentStateAxis].MovingAverageFilter, touchscreenReading->Position);
         /* Apply PID regulation */
         r32 regulatorOutputRad = BoapPidGetSample(s_stateContexts[s_currentStateAxis].PidRegulator, filteredPositionMm);
         /* Set servo position */

@@ -13,6 +13,7 @@
 #include <driver/gpio.h>
 #include <driver/rtc_io.h>
 #include <assert.h>
+#include <string.h>
 
 #define BOAP_TOUCHSCREEN_BUSY_WAIT_THRESHOLD           500
 #define BOAP_TOUCHSCREEN_BUSY_WAIT_FOR_STEADY_STATE()  for (int i = 0; i < BOAP_TOUCHSCREEN_BUSY_WAIT_THRESHOLD; i++) { ; }
@@ -28,6 +29,7 @@ typedef struct SBoapTouchscreen {
         r32 AdcToMmOffset;
         r32 AdcToMmSlope;
     } AxisContexts[2];
+    SBoapTouchscreenReading LastReadings[2];
 } SBoapTouchscreen;
 
 /**
@@ -94,6 +96,9 @@ PUBLIC SBoapTouchscreen * BoapTouchscreenCreate(r32 xDim, r32 yDim,
         /* Permanently pull the GND pins low as they will be pulled down even when used as high impedance inputs */
         (void) gpio_set_pull_mode(handle->AxisContexts[EBoapAxis_X].GndPin, GPIO_PULLDOWN_ONLY);
         (void) gpio_set_pull_mode(handle->AxisContexts[EBoapAxis_Y].GndPin, GPIO_PULLDOWN_ONLY);
+
+        /* Clear the last readings table */
+        (void) memset(handle->LastReadings, 0, sizeof(handle->LastReadings));
     }
 
     return handle;
@@ -103,12 +108,13 @@ PUBLIC SBoapTouchscreen * BoapTouchscreenCreate(r32 xDim, r32 yDim,
  * @brief Get touchscreen position
  * @param handle Touchscreen handle
  * @param axis Enum designating the axis of measurement
- * @param position Output buffer for the measured position
- * @return bool True if ball is on the plate, false otherwise
+ * @return Pointer to the reading within the touchscreen structure or NULL on no contact
+ * @note Readings are stored separately for each axis, allowing for simultaneous reading of both axes
+ *       and only later handling the data if any is available. Also, the readings in the structure do
+ *       not get clobbered if an invalid reading (no touch condition) occurs.
  */
-PUBLIC bool BoapTouchscreenGetPosition(SBoapTouchscreen * handle, EBoapAxis axis, r32 * position) {
+PUBLIC SBoapTouchscreenReading * BoapTouchscreenGetPosition(SBoapTouchscreen * handle, EBoapAxis axis) {
 
-    bool validReading;
     gpio_num_t adcPin = handle->AxisContexts[axis].AdcPin;
     gpio_num_t vddPin = handle->AxisContexts[axis].VddPin;
     gpio_num_t gndPin = handle->AxisContexts[axis].GndPin;
@@ -151,15 +157,14 @@ PUBLIC bool BoapTouchscreenGetPosition(SBoapTouchscreen * handle, EBoapAxis axis
     /* Assert valid measurement */
     if (likely(measuredAdcValue > 0)) {
 
-        *position = (r32) measuredAdcValue * handle->AxisContexts[axis].AdcToMmSlope + handle->AxisContexts[axis].AdcToMmOffset;
-        validReading = true;
+        handle->LastReadings[axis].Position = (r32) measuredAdcValue * handle->AxisContexts[axis].AdcToMmSlope + handle->AxisContexts[axis].AdcToMmOffset;
+        handle->LastReadings[axis].RawAdc = measuredAdcValue;
+        return &handle->LastReadings[axis];
 
     } else {
 
-        validReading = false;
+        return NULL;
     }
-
-    return validReading;
 }
 
 /**

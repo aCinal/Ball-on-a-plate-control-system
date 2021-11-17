@@ -12,11 +12,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <esp_timer.h>
-#include <hal/adc_hal.h>
-#include <driver/adc.h>
-#include <driver/gpio.h>
 #include <driver/mcpwm.h>
-#include <stdbool.h>
 
 #define BOAP_CONTROLLER_ADC_MULTISAMPLING                  64
 #define BOAP_CONTROLLER_GPIO_NUM_TO_CHANNEL(GPIO_NUM)      ADC1_GPIO##GPIO_NUM##_CHANNEL
@@ -175,20 +171,20 @@ PRIVATE void BoapControllerMessageHandlerThreadEntryPoint(void * arg) {
 
 PRIVATE void BoapControllerTimerCallback(void * arg) {
 
-    r32 xPosition;
-    r32 yPosition;
-
     (void) arg;
 
-    if (BoapTouchscreenGetPosition(s_touchscreenHandle, EBoapAxis_X, &xPosition) && BoapTouchscreenGetPosition(s_touchscreenHandle, EBoapAxis_Y, &yPosition)) {
+    SBoapTouchscreenReading * xReading = BoapTouchscreenGetPosition(s_touchscreenHandle, EBoapAxis_X);
+    SBoapTouchscreenReading * yReading = BoapTouchscreenGetPosition(s_touchscreenHandle, EBoapAxis_Y);
+
+    if (NULL != xReading && NULL != yReading) {
 
         /* If both axes register valid inputs, send new setpoint request to the plant */
         void * newSetpointRequest = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_PLANT, BOAP_ACP_NEW_SETPOINT_REQ, sizeof(SBoapAcpNewSetpointReq));
         if (likely(NULL != newSetpointRequest)) {
 
             SBoapAcpNewSetpointReq * payload = BoapAcpMsgGetPayload(newSetpointRequest);
-            payload->SetpointX = xPosition;
-            payload->SetpointY = yPosition;
+            payload->SetpointX = xReading->Position;
+            payload->SetpointY = yReading->Position;
             BoapAcpMsgSend(newSetpointRequest);
         }
     }

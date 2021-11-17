@@ -8,11 +8,17 @@
 #define BOAP_TOUCHSCREEN_H
 
 #include <boap_common.h>
+#include <hal/adc_hal.h>
 #include <driver/adc.h>
 #include <driver/gpio.h>
-#include <stdbool.h>
 
 typedef struct SBoapTouchscreen SBoapTouchscreen;
+typedef struct SBoapTouchscreenReading {
+    u16 RawAdc;
+    r32 Position;
+} SBoapTouchscreenReading;
+
+#define BOAP_TOUCHSCREEN_GPIO_NUM_TO_CHANNEL(GPIO_NUM)        ADC1_GPIO##GPIO_NUM##_CHANNEL
 
 /**
  * @brief Create a touchscreen object instance
@@ -40,10 +46,12 @@ SBoapTouchscreen * BoapTouchscreenCreate(r32 xDim, r32 yDim,
  * @brief Get touchscreen position
  * @param handle Touchscreen handle
  * @param axis Enum designating the axis of measurement
- * @param position Output buffer for the measured position
- * @return bool True if ball is on the plate, false otherwise
+ * @return Pointer to the reading within the touchscreen structure or NULL on no contact
+ * @note Readings are stored separately for each axis, allowing for simultaneous reading of both axes
+ *       and only later handling the data if any is available. Also, the readings in the structure do
+ *       not get clobbered if an invalid reading (no touch condition) occurs.
  */
-bool BoapTouchscreenGetPosition(SBoapTouchscreen * handle, EBoapAxis axis, r32 * position);
+SBoapTouchscreenReading * BoapTouchscreenGetPosition(SBoapTouchscreen * handle, EBoapAxis axis);
 
 /**
  * @brief Destroy a touchscreen object

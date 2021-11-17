@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <assert.h>
 #include <esp_compiler.h>
+#include <driver/gpio.h>
 #include <freertos/FreeRTOS.h>
 
 /* Basic types definitions */
@@ -54,6 +55,7 @@ typedef enum EBoapAxis {
 #define MACRO_EVALUATE(x)         x
 #define MACRO_EXPAND(MACRO, ARG)  MACRO(ARG)
 #define BOAP_AXIS_NAME(axis)      ( (axis) == EBoapAxis_X ? "X-axis" : "Y-axis" )
+#define BOAP_GPIO_NUM(GPIO_NUM)   GPIO_NUM_##GPIO_NUM
 
 /* Common definitions */
 #define BOAP_NRT_CORE             0

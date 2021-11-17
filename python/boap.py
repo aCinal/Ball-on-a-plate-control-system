@@ -89,9 +89,8 @@ def GetEarlyLoggerCallback(eFlagValue):
             return ('boap_' + datestring + '_' + timestring + '_startup.log')
         filename = GetNewFilename()
         def ToFileCallback(logEntry):
-            fd = open(filename, 'at')
-            print(logEntry, file=fd)
-            fd.close()
+            with open(filename, 'at') as fd:
+                print(logEntry, file=fd)
         return ToFileCallback
     else:
         def NoLogCallback(logEntry):
