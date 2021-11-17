@@ -69,9 +69,9 @@ PRIVATE SBoapControlStateContext s_stateContexts[] = {
 };
 PRIVATE SBoapTouchscreen * s_touchscreenHandle = NULL;
 PRIVATE esp_timer_handle_t s_timerHandle = NULL;
-PRIVATE u64 s_timerOverflows = 0;
-PRIVATE bool s_inHandlerMarker = false;
 PRIVATE r32 s_samplingPeriod = 0.0f;
+PRIVATE volatile u64 s_timerOverflows = 0;
+PRIVATE volatile bool s_inHandlerMarker = false;
 
 PRIVATE void BoapControlTimerCallback(void * arg);
 PRIVATE void BoapControlStateTransition(void);
@@ -96,7 +96,9 @@ PUBLIC EBoapRet BoapControlInit(void) {
     s_samplingPeriod = BOAP_CONTROL_SAMPLING_PERIOD_DEFAULT;
     BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): Initialization started. Default sampling period is %f", __FUNCTION__, s_samplingPeriod);
 
-    BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating the touchscreen object...");
+    BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating the touchscreen object - screen dimensions are %f (adc: %d-%d) and %f (adc: %d-%d)...",
+        BOAP_CONTROL_SCREEN_DIMENSION_X_AXIS_MM, BOAP_CONTROL_ADC_LOW_X_AXIS, BOAP_CONTROL_ADC_HIGH_X_AXIS,
+        BOAP_CONTROL_SCREEN_DIMENSION_Y_AXIS_MM, BOAP_CONTROL_ADC_LOW_Y_AXIS, BOAP_CONTROL_ADC_HIGH_Y_AXIS);
     s_touchscreenHandle = BoapTouchscreenCreate(BOAP_CONTROL_SCREEN_DIMENSION_X_AXIS_MM,
                                                 BOAP_CONTROL_SCREEN_DIMENSION_Y_AXIS_MM,
                                                 BOAP_CONTROL_ADC_LOW_X_AXIS,
@@ -319,7 +321,7 @@ PUBLIC void BoapControlHandleTimerExpired(void) {
         [EBoapAxis_X] = 0,
         [EBoapAxis_Y] = 0
     };
-    static u32 unfilteredPositionMm[] = {
+    static r32 unfilteredPositionMm[] = {
         [EBoapAxis_X] = 0.0f,
         [EBoapAxis_Y] = 0.0f
     };
@@ -363,8 +365,8 @@ PUBLIC void BoapControlHandleTimerExpired(void) {
         if (EBoapAxis_Y == s_currentStateAxis && xPositionAsserted) {
 
             /* Send the trace message */
-           BoapControlTraceBallPosition(xSetpoint, xPositionFilteredMm,
-               BoapPidGetSetpoint(s_stateContexts[EBoapAxis_Y].PidRegulator), filteredPositionMm);
+            BoapControlTraceBallPosition(xSetpoint, xPositionFilteredMm,
+                BoapPidGetSetpoint(s_stateContexts[EBoapAxis_Y].PidRegulator), filteredPositionMm);
         }
 
         /* Branchless assign, it is ok to overwrite the X-axis data once the trace message is sent */
