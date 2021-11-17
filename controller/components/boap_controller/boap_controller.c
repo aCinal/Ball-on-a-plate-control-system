@@ -173,8 +173,8 @@ PRIVATE void BoapControllerTimerCallback(void * arg) {
 
     (void) arg;
 
-    SBoapTouchscreenReading * xReading = BoapTouchscreenGetPosition(s_touchscreenHandle, EBoapAxis_X);
-    SBoapTouchscreenReading * yReading = BoapTouchscreenGetPosition(s_touchscreenHandle, EBoapAxis_Y);
+    SBoapTouchscreenReading * xReading = BoapTouchscreenRead(s_touchscreenHandle, EBoapAxis_X);
+    SBoapTouchscreenReading * yReading = BoapTouchscreenRead(s_touchscreenHandle, EBoapAxis_Y);
 
     if (NULL != xReading && NULL != yReading) {
 

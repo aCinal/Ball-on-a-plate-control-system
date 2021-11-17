@@ -105,7 +105,7 @@ PUBLIC SBoapTouchscreen * BoapTouchscreenCreate(r32 xDim, r32 yDim,
 }
 
 /**
- * @brief Get touchscreen position
+ * @brief Get touchscreen reading
  * @param handle Touchscreen handle
  * @param axis Enum designating the axis of measurement
  * @return Pointer to the reading within the touchscreen structure or NULL on no contact
@@ -113,7 +113,7 @@ PUBLIC SBoapTouchscreen * BoapTouchscreenCreate(r32 xDim, r32 yDim,
  *       and only later handling the data if any is available. Also, the readings in the structure do
  *       not get clobbered if an invalid reading (no touch condition) occurs.
  */
-PUBLIC SBoapTouchscreenReading * BoapTouchscreenGetPosition(SBoapTouchscreen * handle, EBoapAxis axis) {
+PUBLIC SBoapTouchscreenReading * BoapTouchscreenRead(SBoapTouchscreen * handle, EBoapAxis axis) {
 
     gpio_num_t adcPin = handle->AxisContexts[axis].AdcPin;
     gpio_num_t vddPin = handle->AxisContexts[axis].VddPin;

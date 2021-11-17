@@ -319,6 +319,10 @@ PUBLIC void BoapControlHandleTimerExpired(void) {
         [EBoapAxis_X] = 0,
         [EBoapAxis_Y] = 0
     };
+    static u32 unfilteredPositionMm[] = {
+        [EBoapAxis_X] = 0.0f,
+        [EBoapAxis_Y] = 0.0f
+    };
 
     /* Trace context - save the X-axis state to be available in the next iteration (Y-axis) */
     static bool xPositionAsserted = false;
@@ -329,7 +333,7 @@ PUBLIC void BoapControlHandleTimerExpired(void) {
     s_inHandlerMarker = true;
 
     /* Run the ADC conversion */
-    SBoapTouchscreenReading * touchscreenReading = BoapTouchscreenGetPosition(s_touchscreenHandle, s_currentStateAxis);
+    SBoapTouchscreenReading * touchscreenReading = BoapTouchscreenRead(s_touchscreenHandle, s_currentStateAxis);
 
     if (unlikely(NULL == touchscreenReading)) {
 
@@ -340,15 +344,17 @@ PUBLIC void BoapControlHandleTimerExpired(void) {
 
         /* Reset the no touch condition counter - ball is touching the plate */
         noTouchCounter[s_currentStateAxis] = 0;
+        /* Save the unfiltered position */
+        unfilteredPositionMm[s_currentStateAxis] = touchscreenReading->Position;
     }
 
     /* Assert the ball is still on the plate */
     if (likely((NULL != touchscreenReading) || (noTouchCounter[s_currentStateAxis] < BOAP_CONTROL_SPURIOUS_NO_TOUCH_TOLERANCE))) {
 
-        /* On spurious no touch condition, unfilteredPositionMm does not change, so use its old value */
+        /* On spurious no touch condition, unfilteredPositionMm[s_currentStateAxis] does not change, so use its old value */
 
         /* Filter the sample */
-        r32 filteredPositionMm = BoapFilterGetSample(s_stateContexts[s_currentStateAxis].MovingAverageFilter, touchscreenReading->Position);
+        r32 filteredPositionMm = BoapFilterGetSample(s_stateContexts[s_currentStateAxis].MovingAverageFilter, unfilteredPositionMm[s_currentStateAxis]);
         /* Apply PID regulation */
         r32 regulatorOutputRad = BoapPidGetSample(s_stateContexts[s_currentStateAxis].PidRegulator, filteredPositionMm);
         /* Set servo position */
@@ -590,7 +596,7 @@ PRIVATE void BoapControlHandleSetSamplingPeriodReq(void * request) {
     SBoapAcpSetSamplingPeriodReq * reqPayload = (SBoapAcpSetSamplingPeriodReq *) BoapAcpMsgGetPayload(request);
 
     r32 oldSamplingPeriod = s_samplingPeriod;
-    r32 newTimerPeriod = BOAP_CONTROL_SAMPLING_PERIOD_TO_TIMER_PERIOD(reqPayload->SamplingPeriod);
+    u64 newTimerPeriod = BOAP_CONTROL_SAMPLING_PERIOD_TO_TIMER_PERIOD(reqPayload->SamplingPeriod);
 
     /* Stop the timer */
     (void) esp_timer_stop(s_timerHandle);

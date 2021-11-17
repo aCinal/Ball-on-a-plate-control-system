@@ -14,8 +14,8 @@
 
 typedef struct SBoapTouchscreen SBoapTouchscreen;
 typedef struct SBoapTouchscreenReading {
-    u16 RawAdc;
     r32 Position;
+    u16 RawAdc;
 } SBoapTouchscreenReading;
 
 #define BOAP_TOUCHSCREEN_GPIO_NUM_TO_CHANNEL(GPIO_NUM)        ADC1_GPIO##GPIO_NUM##_CHANNEL
@@ -43,7 +43,7 @@ SBoapTouchscreen * BoapTouchscreenCreate(r32 xDim, r32 yDim,
                                          u32 multisampling);
 
 /**
- * @brief Get touchscreen position
+ * @brief Get touchscreen reading
  * @param handle Touchscreen handle
  * @param axis Enum designating the axis of measurement
  * @return Pointer to the reading within the touchscreen structure or NULL on no contact
@@ -51,7 +51,7 @@ SBoapTouchscreen * BoapTouchscreenCreate(r32 xDim, r32 yDim,
  *       and only later handling the data if any is available. Also, the readings in the structure do
  *       not get clobbered if an invalid reading (no touch condition) occurs.
  */
-SBoapTouchscreenReading * BoapTouchscreenGetPosition(SBoapTouchscreen * handle, EBoapAxis axis);
+SBoapTouchscreenReading * BoapTouchscreenRead(SBoapTouchscreen * handle, EBoapAxis axis);
 
 /**
  * @brief Destroy a touchscreen object

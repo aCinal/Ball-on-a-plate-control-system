@@ -60,8 +60,8 @@ void app_main(void) {
     BoapLogPrint(EBoapLogSeverityLevel_Info, "Touchscreen instantiated. Entering an infinite loop. Touch the screen at its corner to determine the boundary ADC values");
     for ( ; /* ever */ ; ) {
 
-        SBoapTouchscreenReading * xReading = BoapTouchscreenGetPosition(touchscreen, EBoapAxis_X);
-        SBoapTouchscreenReading * yReading = BoapTouchscreenGetPosition(touchscreen, EBoapAxis_Y);
+        SBoapTouchscreenReading * xReading = BoapTouchscreenRead(touchscreen, EBoapAxis_X);
+        SBoapTouchscreenReading * yReading = BoapTouchscreenRead(touchscreen, EBoapAxis_Y);
         if (NULL != xReading && NULL != yReading) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Info, "Read ADC values: (x, y) = (%04hu, %04hu)", xReading->RawAdc, yReading->RawAdc);
