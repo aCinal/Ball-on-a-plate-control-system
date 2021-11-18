@@ -6,11 +6,14 @@
 
 #include <boap_router.h>
 #include <boap_acp.h>
+#include <boap_log.h>
+#include <boap_messages.h>
 #include <boap_common.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/queue.h>
 #include <driver/uart.h>
+#include <stdio.h>
 
 #define BOAP_ROUTER_ACP_QUEUE_LEN                  16
 
@@ -38,6 +41,8 @@ PRIVATE EBoapRet BoapRouterUartInit(void);
 PRIVATE void BoapRouterUartDeinit(void);
 PRIVATE void BoapRouterDownlinkThreadEntryPoint(void * arg);
 PRIVATE void BoapRouterUplinkThreadEntryPoint(void * arg);
+PRIVATE void BoapRouterAcpMessageLoopback(void * message);
+PRIVATE void BoapRouterLogCommitCallback(u32 len, const char * header, const char * payload, const char * trailer);
 
 /**
  * @brief Initialize the router service
@@ -68,6 +73,11 @@ PUBLIC EBoapRet BoapRouterInit(void) {
 
     IF_OK(status) {
 
+        /* Register logger callback */
+        BoapLogRegisterCommitCallback(BoapRouterLogCommitCallback);
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): ACP stack and UART peripheral both initialized. Logging from router context is now possible", __FUNCTION__);
+
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "Creating the downlink thread (network to PC)...");
         /* Create the ACP listener (downlink thread) */
         if (unlikely(pdPASS != xTaskCreatePinnedToCore(BoapRouterDownlinkThreadEntryPoint,
                                                        "DLThread",
@@ -77,15 +87,16 @@ PUBLIC EBoapRet BoapRouterInit(void) {
                                                        &downlinkThreadHandle,
                                                        BOAP_ROUTER_DOWNLINK_THREAD_CORE_AFFINITY))) {
 
+            BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the downlink thread");
             /* Cleanup */
             BoapRouterUartDeinit();
-            BoapAcpDeinit();
             status = EBoapRet_Error;
         }
     }
 
     IF_OK(status) {
 
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "Creating the uplink thread (PC to network)...");
         /* Create the UART event handler (uplink thread) */
         if (unlikely(pdPASS != xTaskCreatePinnedToCore(BoapRouterUplinkThreadEntryPoint,
                                                        "ULThread",
@@ -95,10 +106,10 @@ PUBLIC EBoapRet BoapRouterInit(void) {
                                                        NULL,
                                                        BOAP_ROUTER_UPLINK_THREAD_CORE_AFFINITY))) {
 
+            BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the uplink thread");
             /* Cleanup */
             vTaskDelete(downlinkThreadHandle);
             BoapRouterUartDeinit();
-            BoapAcpDeinit();
             status = EBoapRet_Error;
         }
     }
@@ -159,23 +170,25 @@ PRIVATE void BoapRouterDownlinkThreadEntryPoint(void * arg) {
 
     (void) arg;
 
+    BoapLogPrint(EBoapLogSeverityLevel_Info, "Downlink thread entered on core %d", xPortGetCoreID());
+
     for ( ; /* ever */ ; ) {
 
         /* Wait for an ACP message */
         void * message = BoapAcpMsgReceive(BOAP_ACP_WAIT_FOREVER);
-        /* Forward the message via UART */
-        (void) uart_write_bytes(BOAP_ROUTER_UART_NUM, message, BoapAcpMsgGetBulkSize(message));
-        /* Destroy the local copy */
-        BoapAcpMsgDestroy(message);
+        /* Transmit the message to the PC */
+        BoapRouterAcpMessageLoopback(message);
     }
 }
 
 PRIVATE void BoapRouterUplinkThreadEntryPoint(void * arg) {
 
-    (void) arg;
-
     u8 localBuffer[BOAP_ROUTER_UART_LOCAL_BUFFER_SIZE];
     void * message;
+
+    (void) arg;
+
+    BoapLogPrint(EBoapLogSeverityLevel_Info, "Uplink thread entered on core %d", xPortGetCoreID());
 
     for ( ; /* ever */ ; ) {
 
@@ -195,10 +208,33 @@ PRIVATE void BoapRouterUplinkThreadEntryPoint(void * arg) {
                 /* Send the message */
                 BoapAcpMsgSend(message);
             }
+            break;
 
         default:
 
+            BoapLogPrint(EBoapLogSeverityLevel_Warning, "Received unexpected UART event of type: %d", event.type);
             break;
         }
+    }
+}
+
+PRIVATE void BoapRouterAcpMessageLoopback(void * message) {
+
+    /* Forward the message via UART */
+    (void) uart_write_bytes(BOAP_ROUTER_UART_NUM, message, BoapAcpMsgGetBulkSize(message));
+    /* Destroy the local copy */
+    BoapAcpMsgDestroy(message);
+}
+
+PRIVATE void BoapRouterLogCommitCallback(u32 len, const char * header, const char * payload, const char * trailer) {
+
+    /* Wrap the log entry in an ACP message */
+    void * message = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_PC, BOAP_ACP_LOG_COMMIT, sizeof(SBoapAcpLogCommit));
+    if (likely(NULL != message)) {
+
+        SBoapAcpLogCommit * msgPayload = (SBoapAcpLogCommit *) BoapAcpMsgGetPayload(message);
+        (void) snprintf(msgPayload->Message, sizeof(msgPayload->Message), "%s%s%s", header, payload, trailer);
+        /* Transmit the message to the PC */
+        BoapRouterAcpMessageLoopback(message);
     }
 }

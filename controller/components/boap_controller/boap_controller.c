@@ -55,8 +55,9 @@ PUBLIC EBoapRet BoapControllerInit(void) {
     IF_OK(status) {
 
         BoapLogRegisterCommitCallback(BoapControllerLogCommitCallback);
-        BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): ACP stack up and running. Logging is now possible. Instantiating the touchscreen object...", __FUNCTION__);
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): ACP stack up and running. Logging from controller context is now possible", __FUNCTION__);
 
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating the touchscreen object...");
         /* Instantiate the touchscreen object */
         s_touchscreenHandle = BoapTouchscreenCreate(BOAP_CONTROLLER_SCREEN_DIMENSION_X_AXIS_MM,
                                                     BOAP_CONTROLLER_SCREEN_DIMENSION_Y_AXIS_MM,

@@ -1,7 +1,7 @@
 idf_component_register(SRCS "boap_router.c"
                        INCLUDE_DIRS "."
                        PRIV_INCLUDE_DIRS "../../../common/include"
-                       REQUIRES boap_acp)
+                       REQUIRES boap_acp boap_log)
 
 # Define UART parameters
 target_compile_definitions(${COMPONENT_LIB}

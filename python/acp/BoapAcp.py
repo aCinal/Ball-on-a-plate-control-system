@@ -43,7 +43,6 @@ class BoapAcp:
 
             # Assert correctly routed message
             if receiver != BoapAcpNodeId.BOAP_ACP_NODE_ID_PC:
-                self.log.Warning('Received misrouted message destined for node 0x%02X' % receiver)
                 return None
 
             payload = None

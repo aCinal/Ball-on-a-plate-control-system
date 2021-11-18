@@ -67,8 +67,8 @@ class BoapLog:
         def GetTimeStamp():
             return '<' + time.ctime().split()[3] + '>'
 
-        logEntry = '[0x%02X] ' % BoapAcpNodeId.BOAP_ACP_NODE_ID_PC + GetTimeStamp() + ' ' \
-            + self.severityTags[severity] + ' (' + threading.current_thread().getName() + '): ' + message
+        logEntry = '[local] ' + GetTimeStamp() + ' ' + self.severityTags[severity] \
+            + ' (' + threading.current_thread().getName() + '): ' + message
         self.PrintRaw(logEntry)
 
     def Error(self, message):
