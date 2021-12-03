@@ -223,11 +223,11 @@ PUBLIC EBoapRet BoapControlInit(void) {
         BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating a servo object for the x-axis...");
 
         s_stateContexts[EBoapAxis_X].ServoObject = BoapServoCreate(BOAP_CONTROL_PWM_UNIT_X_AXIS,
-                                                                              BOAP_CONTROL_PWM_PIN_X_AXIS,
-                                                                              BOAP_CONTROL_PWM_FREQUENCY,
-                                                                              BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US,
-                                                                              BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US,
-                                                                              BOAP_CONTROL_SERVO_MAX_ANGLE_RAD);
+                                                                   BOAP_CONTROL_PWM_PIN_X_AXIS,
+                                                                   BOAP_CONTROL_PWM_FREQUENCY,
+                                                                   BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US,
+                                                                   BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US,
+                                                                   BOAP_CONTROL_SERVO_MAX_ANGLE_RAD);
         if (unlikely(NULL == s_stateContexts[EBoapAxis_X].ServoObject)) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the servo object for the x-axis");
@@ -250,11 +250,11 @@ PUBLIC EBoapRet BoapControlInit(void) {
         BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating a servo object for the y-axis...");
 
         s_stateContexts[EBoapAxis_Y].ServoObject = BoapServoCreate(BOAP_CONTROL_PWM_UNIT_Y_AXIS,
-                                                                              BOAP_CONTROL_PWM_PIN_Y_AXIS,
-                                                                              BOAP_CONTROL_PWM_FREQUENCY,
-                                                                              BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US,
-                                                                              BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US,
-                                                                              BOAP_CONTROL_SERVO_MAX_ANGLE_RAD);
+                                                                   BOAP_CONTROL_PWM_PIN_Y_AXIS,
+                                                                   BOAP_CONTROL_PWM_FREQUENCY,
+                                                                   BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US,
+                                                                   BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US,
+                                                                   BOAP_CONTROL_SERVO_MAX_ANGLE_RAD);
         if (unlikely(NULL == s_stateContexts[EBoapAxis_Y].ServoObject)) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the servo object for the y-axis");
@@ -333,6 +333,7 @@ PUBLIC void BoapControlHandleTimerExpired(void) {
 
     /* Mark entry into the event handler */
     s_inHandlerMarker = true;
+    MEMORY_BARRIER();
 
     /* Run the ADC conversion */
     SBoapTouchscreenReading * touchscreenReading = BoapTouchscreenRead(s_touchscreenHandle, s_currentStateAxis);
@@ -391,6 +392,7 @@ PUBLIC void BoapControlHandleTimerExpired(void) {
 
     /* Mark exit out of the event handler */
     s_inHandlerMarker = false;
+    MEMORY_BARRIER();
 }
 
 /**
@@ -456,6 +458,7 @@ PRIVATE void BoapControlTimerCallback(void * arg) {
 
     s_timerOverflows++;
 
+    MEMORY_BARRIER();
     if (likely(false == s_inHandlerMarker)) {
 
         (void) BoapEventSend(EBoapEventType_TimerExpired, NULL);
