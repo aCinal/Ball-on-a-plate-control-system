@@ -329,7 +329,7 @@ PUBLIC void BoapControlHandleTimerExpired(void) {
     /* Trace context - save the X-axis state to be available in the next iteration (Y-axis) */
     static bool xPositionAsserted = false;
     static r32 xPositionFilteredMm = 0.0f;
-    static r32 xSetpoint = 0.0f;
+    static r32 xSetpointMm = 0.0f;
 
     /* Mark entry into the event handler */
     s_inHandlerMarker = true;
@@ -358,21 +358,21 @@ PUBLIC void BoapControlHandleTimerExpired(void) {
         /* Filter the sample */
         r32 filteredPositionMm = BoapFilterGetSample(s_stateContexts[s_currentStateAxis].MovingAverageFilter, unfilteredPositionMm[s_currentStateAxis]);
         /* Apply PID regulation */
-        r32 regulatorOutputRad = BoapPidGetSample(s_stateContexts[s_currentStateAxis].PidRegulator, filteredPositionMm);
+        r32 regulatorOutputRad = BoapPidGetSample(s_stateContexts[s_currentStateAxis].PidRegulator, MM_TO_M(filteredPositionMm));
         /* Set servo position */
         BoapServoSetPosition(s_stateContexts[s_currentStateAxis].ServoObject, regulatorOutputRad);
 
         if (EBoapAxis_Y == s_currentStateAxis && xPositionAsserted) {
 
             /* Send the trace message */
-            BoapControlTraceBallPosition(xSetpoint, xPositionFilteredMm,
-                BoapPidGetSetpoint(s_stateContexts[EBoapAxis_Y].PidRegulator), filteredPositionMm);
+            BoapControlTraceBallPosition(xSetpointMm, xPositionFilteredMm,
+                M_TO_MM(BoapPidGetSetpoint(s_stateContexts[EBoapAxis_Y].PidRegulator)), filteredPositionMm);
         }
 
         /* Branchless assign, it is ok to overwrite the X-axis data once the trace message is sent */
         xPositionFilteredMm = filteredPositionMm;
         xPositionAsserted = true;
-        xSetpoint = BoapPidGetSetpoint(s_stateContexts[EBoapAxis_X].PidRegulator);
+        xSetpointMm = M_TO_MM(BoapPidGetSetpoint(s_stateContexts[EBoapAxis_X].PidRegulator));
 
     } else {  /* Actual no touch condition */
 

@@ -38,7 +38,6 @@
 PRIVATE QueueHandle_t s_uartEventQueueHandle = NULL;
 
 PRIVATE EBoapRet BoapRouterUartInit(void);
-PRIVATE void BoapRouterUartDeinit(void);
 PRIVATE void BoapRouterDownlinkThreadEntryPoint(void * arg);
 PRIVATE void BoapRouterUplinkThreadEntryPoint(void * arg);
 PRIVATE void BoapRouterAcpMessageLoopback(void * message);
@@ -64,10 +63,7 @@ PUBLIC EBoapRet BoapRouterInit(void) {
         /* Initialize the UART service */
         if (unlikely(EBoapRet_Ok != BoapRouterUartInit())) {
 
-            /* Cleanup */
-            BoapAcpDeinit();
             status = EBoapRet_Error;
-
         }
     }
 
@@ -88,8 +84,6 @@ PUBLIC EBoapRet BoapRouterInit(void) {
                                                        BOAP_ROUTER_DOWNLINK_THREAD_CORE_AFFINITY))) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the downlink thread");
-            /* Cleanup */
-            BoapRouterUartDeinit();
             status = EBoapRet_Error;
         }
     }
@@ -109,7 +103,6 @@ PUBLIC EBoapRet BoapRouterInit(void) {
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the uplink thread");
             /* Cleanup */
             vTaskDelete(downlinkThreadHandle);
-            BoapRouterUartDeinit();
             status = EBoapRet_Error;
         }
     }
@@ -159,11 +152,6 @@ PRIVATE EBoapRet BoapRouterUartInit(void) {
     }
 
     return status;
-}
-
-PRIVATE void BoapRouterUartDeinit(void) {
-
-    (void) uart_driver_delete(BOAP_ROUTER_UART_NUM);
 }
 
 PRIVATE void BoapRouterDownlinkThreadEntryPoint(void * arg) {

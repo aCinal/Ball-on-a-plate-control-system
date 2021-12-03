@@ -92,6 +92,7 @@ PUBLIC EBoapRet BoapControllerInit(void) {
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the message handler thread");
             /* Cleanup */
             BoapTouchscreenDestroy(s_touchscreenHandle);
+            status = EBoapRet_Error;
         }
     }
 
