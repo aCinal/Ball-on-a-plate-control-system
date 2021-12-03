@@ -173,11 +173,11 @@ PUBLIC EBoapRet BoapControlInit(void) {
 
         BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating a PID regulator for the x-axis...");
         s_stateContexts[EBoapAxis_X].PidRegulator = BoapPidCreate(BOAP_CONTROL_SET_POINT_X_AXIS_MM_DEFAULT,
-                                                                             BOAP_CONTROL_PROPORTIONAL_GAIN_DEFAULT,
-                                                                             BOAP_CONTROL_INTEGRAL_GAIN_DEFAULT,
-                                                                             BOAP_CONTROL_DERIVATIVE_GAIN_DEFAULT,
-                                                                             s_samplingPeriod,
-                                                                             BOAP_CONTROL_SATURATION_THRESHOLD);
+                                                                  BOAP_CONTROL_PROPORTIONAL_GAIN_DEFAULT,
+                                                                  BOAP_CONTROL_INTEGRAL_GAIN_DEFAULT,
+                                                                  BOAP_CONTROL_DERIVATIVE_GAIN_DEFAULT,
+                                                                  s_samplingPeriod,
+                                                                  BOAP_CONTROL_SATURATION_THRESHOLD);
         if (unlikely(NULL == s_stateContexts[EBoapAxis_X].PidRegulator)) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the PID regulator for the x-axis");
@@ -197,11 +197,11 @@ PUBLIC EBoapRet BoapControlInit(void) {
 
         BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating a PID regulator for the y-axis...");
         s_stateContexts[EBoapAxis_Y].PidRegulator = BoapPidCreate(BOAP_CONTROL_SET_POINT_Y_AXIS_MM_DEFAULT,
-                                                                             BOAP_CONTROL_PROPORTIONAL_GAIN_DEFAULT,
-                                                                             BOAP_CONTROL_INTEGRAL_GAIN_DEFAULT,
-                                                                             BOAP_CONTROL_DERIVATIVE_GAIN_DEFAULT,
-                                                                             s_samplingPeriod,
-                                                                             BOAP_CONTROL_SATURATION_THRESHOLD);
+                                                                  BOAP_CONTROL_PROPORTIONAL_GAIN_DEFAULT,
+                                                                  BOAP_CONTROL_INTEGRAL_GAIN_DEFAULT,
+                                                                  BOAP_CONTROL_DERIVATIVE_GAIN_DEFAULT,
+                                                                  s_samplingPeriod,
+                                                                  BOAP_CONTROL_SATURATION_THRESHOLD);
         if (unlikely(NULL == s_stateContexts[EBoapAxis_Y].PidRegulator)) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the PID regulator for the y-axis");
@@ -512,8 +512,8 @@ PRIVATE void BoapControlHandleNewSetpointReq(void * request) {
     SBoapAcpNewSetpointReq * reqPayload = (SBoapAcpNewSetpointReq *) BoapAcpMsgGetPayload(request);
 
     /* Change the setpoint */
-    (void) BoapPidSetSetpoint(s_stateContexts[EBoapAxis_X].PidRegulator, reqPayload->SetpointX);
-    (void) BoapPidSetSetpoint(s_stateContexts[EBoapAxis_Y].PidRegulator, reqPayload->SetpointY);
+    (void) BoapPidSetSetpoint(s_stateContexts[EBoapAxis_X].PidRegulator, MM_TO_M(reqPayload->SetpointX));
+    (void) BoapPidSetSetpoint(s_stateContexts[EBoapAxis_Y].PidRegulator, MM_TO_M(reqPayload->SetpointY));
 
     /* Destroy the request message */
     BoapAcpMsgDestroy(request);
