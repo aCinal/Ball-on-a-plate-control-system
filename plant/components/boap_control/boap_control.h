@@ -15,15 +15,4 @@
  */
 EBoapRet BoapControlInit(void);
 
-/**
- * @brief Handle the timer expired event
- */
-void BoapControlHandleTimerExpired(void);
-
-/**
- * @brief Handle an incoming ACP message
- * @param Message handle
- */
-void BoapControlHandleAcpMessage(void * message);
-
 #endif /* BOAP_CONTROL_H */

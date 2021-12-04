@@ -3,6 +3,4 @@ idf_component_register(SRCS "boap_event.c"
                        PRIV_INCLUDE_DIRS "../../../common/include"
                        REQUIRES boap_log
                                 boap_stats
-                                boap_mem
-                                boap_acp
-                                boap_control)
+                                boap_mem)

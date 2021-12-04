@@ -21,7 +21,6 @@ typedef struct SBoapStatsTable {
     u32 SamplingTimerFalseStarts;
 
     u32 AllocationFailures;
-    u32 DeferredMemoryUnrefs;
 
 } SBoapStatsTable;
 

@@ -29,7 +29,7 @@ PUBLIC EBoapRet BoapStatsInit(void) {
     BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): Initialization started. Creating the statistics collection thread...", __FUNCTION__);
     /* Start up the statistics collection thread on the NRT core */
     if (unlikely(pdPASS != xTaskCreatePinnedToCore(BoapStatsThreadEntryPoint,
-                                                   "BoapStatsTask",
+                                                   "BoapStats",
                                                    BOAP_STATS_THREAD_STACK_SIZE,
                                                    NULL,
                                                    BOAP_STATS_THREAD_PRIORITY,
@@ -80,18 +80,17 @@ PRIVATE void BoapStatsThreadEntryPoint(void * arg) {
 
     for ( ; /* ever */ ; ) {
 
-        /* Sleep for long time */
+        /* Sleep for a long time */
         vTaskDelay(BOAP_STATS_THREAD_DELAY_TIME);
 
         /* Upon wake up - collect and log the statistics */
-        BoapLogPrint(EBoapLogSeverityLevel_Info, "ED=%d, EQS=%d, LEQ=%d, LQS=%d, LMT=%d, STFS=%d, AF=%d, DMU=%d",
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "ED=%d, EQS=%d, LEQ=%d, LQS=%d, LMT=%d, STFS=%d, AF=%d",
                      g_boapStatsTable.EventsDispatched,
                      g_boapStatsTable.EventQueueStarvations,
                      g_boapStatsTable.LogEntriesQueued,
                      g_boapStatsTable.LogQueueStarvations,
                      g_boapStatsTable.LogMessageTruncations,
                      g_boapStatsTable.SamplingTimerFalseStarts,
-                     g_boapStatsTable.AllocationFailures,
-                     g_boapStatsTable.DeferredMemoryUnrefs);
+                     g_boapStatsTable.AllocationFailures);
     }
 }

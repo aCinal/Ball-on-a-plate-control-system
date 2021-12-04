@@ -16,9 +16,11 @@ typedef enum EBoapEventType {
 } EBoapEventType;
 
 typedef struct SBoapEvent {
-    EBoapEventType eventType;
+    u32 eventId;
     void * payload;
 } SBoapEvent;
+
+typedef void (*TBoapEventCallback)(SBoapEvent * event);
 
 /**
  * @brief Initialize the event dispatcher service
@@ -27,17 +29,24 @@ typedef struct SBoapEvent {
 EBoapRet BoapEventDispatcherInit(void);
 
 /**
+ * @brief Register an event handler
+ * @param eventId Event identifier
+ * @param callback Callback to be executed for given event type
+ * @return Status
+ */
+EBoapRet BoapEventHandlerRegister(u32 eventId, TBoapEventCallback callback);
+
+/**
+ * @brief Start the event dispatcher
+ */
+void BoapEventDispatcherStart(void);
+
+/**
  * @brief Send an event to the dispatcher
- * @param eventType Identifier of the event
+ * @param eventId Event identifier
  * @param payload Optional payload, can be NULL if not used
  * @return Status
  */
-EBoapRet BoapEventSend(EBoapEventType eventType, void * payload);
-
-/**
- * @brief Defer returning the memory to the heap to the event dispatcher
- * @param block Pointer to the memory block allocated from the heap
- */
-void BoapEventDeferMemoryUnref(void * block);
+EBoapRet BoapEventSend(u32 eventId, void * payload);
 
 #endif /* BOAP_EVENT_H */

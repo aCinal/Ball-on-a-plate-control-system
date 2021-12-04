@@ -7,20 +7,22 @@
 #include <boap_event.h>
 #include <boap_log.h>
 #include <boap_stats.h>
-#include <boap_control.h>
-#include <boap_acp.h>
 #include <boap_common.h>
 #include <boap_mem.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/queue.h>
+#include <freertos/semphr.h>
 #include <stdlib.h>
 
 #define BOAP_EVENT_QUEUE_LEN              32
 #define BOAP_EVENT_DISPATCHER_STACK_SIZE  4 * 1024
 #define BOAP_EVENT_DISPATCHER_PRIORITY    BOAP_PRIO_REALTIME
+#define BOAP_EVENT_MAX_EVENTS             32
 
 PRIVATE QueueHandle_t s_eventQueueHandle = NULL;
+PRIVATE SemaphoreHandle_t s_initSpinlock = NULL;
+PRIVATE TBoapEventCallback s_handlersTable[BOAP_EVENT_MAX_EVENTS];
 
 PRIVATE void BoapEventDispatcherEntryPoint(void * arg);
 PRIVATE SBoapEvent BoapEventReceive(void);
@@ -34,7 +36,13 @@ PUBLIC EBoapRet BoapEventDispatcherInit(void) {
 
     EBoapRet status = EBoapRet_Ok;
 
-    BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): Initialization started. Creating the event queue of size %d...", __FUNCTION__, BOAP_EVENT_QUEUE_LEN);
+    BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): Initialization started. Clearing the handlers table...", __FUNCTION__);
+    for (size_t i = 0; i < BOAP_EVENT_MAX_EVENTS; i++) {
+
+        s_handlersTable[i] = NULL;
+    }
+
+    BoapLogPrint(EBoapLogSeverityLevel_Info, "Creating the event queue of size %d...", BOAP_EVENT_QUEUE_LEN);
     /* Create the event queue */
     s_eventQueueHandle = xQueueCreate(BOAP_EVENT_QUEUE_LEN, sizeof(SBoapEvent));
     /* Assert queue successfully created */
@@ -46,6 +54,26 @@ PUBLIC EBoapRet BoapEventDispatcherInit(void) {
     } else {
 
         BoapLogPrint(EBoapLogSeverityLevel_Info, "Event queue successfully created");
+    }
+
+    IF_OK(status) {
+
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "Creating the initial synchronization semaphore...");
+        /* TODO: Create the initialiation semaphore, block on it in event dispatcher, add EventDispatcherStart API,
+         * fix cleanup in other IF_OK blocks,  */
+        s_initSpinlock = xSemaphoreCreateBinary();
+        if (unlikely(NULL == s_initSpinlock)) {
+
+            BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the initial sync semaphore");
+            /* Cleanup */
+            vQueueDelete(s_eventQueueHandle);
+            s_eventQueueHandle = NULL;
+            status = EBoapRet_Error;
+
+        } else {
+
+            BoapLogPrint(EBoapLogSeverityLevel_Info, "Initial sync semaphore created successfully");
+        }
     }
 
     IF_OK(status) {
@@ -62,7 +90,10 @@ PUBLIC EBoapRet BoapEventDispatcherInit(void) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the event dispatcher");
             /* Cleanup */
+            vSemaphoreDelete(s_initSpinlock);
+            s_initSpinlock = NULL;
             vQueueDelete(s_eventQueueHandle);
+            s_eventQueueHandle = NULL;
             status = EBoapRet_Error;
 
         } else {
@@ -76,15 +107,49 @@ PUBLIC EBoapRet BoapEventDispatcherInit(void) {
 }
 
 /**
+ * @brief Register an event handler
+ * @param eventId Event identifier
+ * @param callback Callback to be executed for given event type
+ * @return Status
+ */
+PUBLIC EBoapRet BoapEventHandlerRegister(u32 eventId, TBoapEventCallback callback) {
+
+    EBoapRet status = EBoapRet_Ok;
+
+    if (likely(eventId < BOAP_EVENT_MAX_EVENTS)) {
+
+        s_handlersTable[eventId] = callback;
+
+    } else {
+
+        status = EBoapRet_InvalidParams;
+    }
+
+    return status;
+}
+
+/**
+ * @brief Start the event dispatcher
+ */
+PUBLIC void BoapEventDispatcherStart(void) {
+
+    /* Post the semaphore */
+    if (s_initSpinlock) {
+
+        (void) xSemaphoreGive(s_initSpinlock);
+    }
+}
+
+/**
  * @brief Send an event to the dispatcher
- * @param eventType Identifier of the event
+ * @param eventId Event identifier
  * @param payload Optional payload, can be NULL if not used
  * @return Status
  */
-PUBLIC EBoapRet BoapEventSend(EBoapEventType eventType, void * payload) {
+PUBLIC EBoapRet BoapEventSend(u32 eventId, void * payload) {
 
     EBoapRet status = EBoapRet_Ok;
-    SBoapEvent event = { .eventType = eventType, .payload = payload };
+    SBoapEvent event = { .eventId = eventId, .payload = payload };
 
     if (xPortInIsrContext()) {
 
@@ -106,16 +171,6 @@ PUBLIC EBoapRet BoapEventSend(EBoapEventType eventType, void * payload) {
     return status;
 }
 
-/**
- * @brief Defer returning the memory to the heap to the event dispatcher
- * @param block Pointer to the memory block allocated from the heap
- */
-PUBLIC void BoapEventDeferMemoryUnref(void * block) {
-
-    /* Assert success to prevent a memory leak */
-    ASSERT(EBoapRet_Ok == BoapEventSend(EBoapEventType_DeferredMemoryUnref, block), "Deferred memory unref must never fail. Increase event queue size");
-}
-
 PRIVATE void BoapEventDispatcherEntryPoint(void * arg) {
 
     (void) arg;
@@ -123,7 +178,16 @@ PRIVATE void BoapEventDispatcherEntryPoint(void * arg) {
     BoapLogPrint(EBoapLogSeverityLevel_Info, "Event dispatcher entered on core %d. Suspending the scheduler...", xPortGetCoreID());
     /* Disable context switches */
     vTaskSuspendAll();
-    BoapLogPrint(EBoapLogSeverityLevel_Info, "Scheduler suspended. Entering the event loop...");
+
+    BoapLogPrint(EBoapLogSeverityLevel_Info, "Scheduler suspended. Spinning on an initial synchronization semaphore...");
+    /* Wait for application startup to complete */
+    while (pdTRUE != xSemaphoreTake(s_initSpinlock, 0)) {
+        ;
+    }
+
+    BoapLogPrint(EBoapLogSeverityLevel_Info, "Synchronization complete. Destroying the semaphore and entering the event loop...");
+    vSemaphoreDelete(s_initSpinlock);
+    s_initSpinlock = NULL;
 
     for ( ; /* ever */ ; ) {
 
@@ -147,27 +211,19 @@ PRIVATE SBoapEvent BoapEventReceive(void) {
 
 PRIVATE void BoapEventDispatch(SBoapEvent * event) {
 
-    switch (event->eventType) {
+    if (likely(event->eventId < BOAP_EVENT_MAX_EVENTS)) {
 
-    case EBoapEventType_AcpMessagePending:
+        if (likely(NULL != s_handlersTable[event->eventId])) {
 
-        BoapControlHandleAcpMessage(event->payload);
-        break;
+            s_handlersTable[event->eventId](event);
 
-    case EBoapEventType_DeferredMemoryUnref:
+        } else {
 
-        BoapMemUnref(event->payload);
-        BOAP_STATS_INCREMENT(DeferredMemoryUnrefs);
-        break;
+            BoapLogPrint(EBoapLogSeverityLevel_Warning, "No handler registered for event with ID %d", event->eventId);
+        }
 
-    case EBoapEventType_TimerExpired:
+    } else {
 
-        BoapControlHandleTimerExpired();
-        break;
-
-    default:
-
-        BoapLogPrint(EBoapLogSeverityLevel_Warning, "Received unknown event: %d", event->eventType);
-        break;
+        BoapLogPrint(EBoapLogSeverityLevel_Warning, "Invalid event ID: %d", event->eventId);
     }
 }

@@ -47,7 +47,6 @@ PUBLIC EBoapRet BoapStartupRun(void) {
 
     /* Register library hooks and callbacks */
     BoapMemRegisterAllocFailureHook(BoapStatsAllocationFailureHook);
-    BoapMemRegisterIsrUnrefHook(BoapEventDeferMemoryUnref);
     BoapLogRegisterCommitCallback(BoapStartupLoggerCommitCallback);
     BoapLogRegisterMessageTruncationHook(BoapStatsLogMessageTruncationHook);
     BoapAcpRegisterTxMessageDroppedHook(BoapStartupAcpTxMessageDroppedHook);
@@ -93,14 +92,17 @@ PRIVATE void BoapStartupThreadEntryPoint(void * arg) {
     /* Assert correct deployment */
     ASSERT(BoapAcpGetOwnNodeId() == BOAP_ACP_NODE_ID_PLANT, "Plant software must be correctly deployed to the correct MCU");
 
-    /* Start up the event dispatcher */
-    ASSERT(EBoapRet_Ok == BoapEventDispatcherInit(), "Event dispatcher startup must not fail");
+    /* Initialize the event dispatcher */
+    ASSERT(EBoapRet_Ok == BoapEventDispatcherInit(), "Event dispatcher initialization must not fail");
 
-    /* Startup dispatcher applications */
+    /* Initialize the main control application */
     ASSERT(EBoapRet_Ok == BoapControlInit(), "Control application startup must not fail");
 
     /* Startup the message listener */
     ASSERT(EBoapRet_Ok == BoapListenerInit(), "Message listener startup must not fail");
+
+    /* Start the event dispatcher */
+    BoapEventDispatcherStart();
 
     /* Start up NRT applications */
     (void) BoapStatsInit();

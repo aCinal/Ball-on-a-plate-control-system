@@ -12,6 +12,7 @@
 #include <boap_servo.h>
 #include <boap_log.h>
 #include <boap_event.h>
+#include <boap_events.h>
 #include <boap_acp.h>
 #include <boap_messages.h>
 #include <boap_stats.h>
@@ -73,6 +74,8 @@ PRIVATE r32 s_samplingPeriod = 0.0f;
 PRIVATE volatile u64 s_timerOverflows = 0;
 PRIVATE volatile bool s_inHandlerMarker = false;
 
+PRIVATE void BoapControlHandleTimerExpired(SBoapEvent * event);
+PRIVATE void BoapControlHandleAcpMessage(SBoapEvent * event);
 PRIVATE void BoapControlTimerCallback(void * arg);
 PRIVATE void BoapControlStateTransition(void);
 PRIVATE void BoapControlTraceBallPosition(r32 xSetpoint, r32 xPosition, r32 ySetpoint, r32 yPosition);
@@ -95,6 +98,10 @@ PUBLIC EBoapRet BoapControlInit(void) {
 
     s_samplingPeriod = BOAP_CONTROL_SAMPLING_PERIOD_DEFAULT;
     BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): Initialization started. Default sampling period is %f", __FUNCTION__, s_samplingPeriod);
+
+    /* Register event handlers */
+    (void) BoapEventHandlerRegister(EBoapEvent_SamplingTimerExpired, BoapControlHandleTimerExpired);
+    (void) BoapEventHandlerRegister(EBoapEvent_AcpMessagePending, BoapControlHandleAcpMessage);
 
     BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating the touchscreen object - screen dimensions are %f (adc: %d-%d) and %f (adc: %d-%d)...",
         BOAP_CONTROL_SCREEN_DIMENSION_X_AXIS_MM, BOAP_CONTROL_ADC_LOW_X_AXIS, BOAP_CONTROL_ADC_HIGH_X_AXIS,
@@ -220,7 +227,8 @@ PUBLIC EBoapRet BoapControlInit(void) {
 
     IF_OK(status) {
 
-        BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating a servo object for the x-axis...");
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating a servo object for the x-axis on pin %d...",
+            BOAP_CONTROL_PWM_PIN_X_AXIS);
 
         s_stateContexts[EBoapAxis_X].ServoObject = BoapServoCreate(BOAP_CONTROL_PWM_UNIT_X_AXIS,
                                                                    BOAP_CONTROL_PWM_PIN_X_AXIS,
@@ -247,7 +255,8 @@ PUBLIC EBoapRet BoapControlInit(void) {
 
     IF_OK(status) {
 
-        BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating a servo object for the y-axis...");
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating a servo object for the y-axis on pin %d...",
+            BOAP_CONTROL_PWM_PIN_Y_AXIS);
 
         s_stateContexts[EBoapAxis_Y].ServoObject = BoapServoCreate(BOAP_CONTROL_PWM_UNIT_Y_AXIS,
                                                                    BOAP_CONTROL_PWM_PIN_Y_AXIS,
@@ -312,10 +321,7 @@ PUBLIC EBoapRet BoapControlInit(void) {
     return status;
 }
 
-/**
- * @brief Handle the timer expired event
- */
-PUBLIC void BoapControlHandleTimerExpired(void) {
+PRIVATE void BoapControlHandleTimerExpired(SBoapEvent * event) {
 
     static u32 noTouchCounter[] = {
         [EBoapAxis_X] = 0,
@@ -325,6 +331,8 @@ PUBLIC void BoapControlHandleTimerExpired(void) {
         [EBoapAxis_X] = 0.0f,
         [EBoapAxis_Y] = 0.0f
     };
+
+    (void) event;
 
     /* Trace context - save the X-axis state to be available in the next iteration (Y-axis) */
     static bool xPositionAsserted = false;
@@ -395,11 +403,9 @@ PUBLIC void BoapControlHandleTimerExpired(void) {
     MEMORY_BARRIER();
 }
 
-/**
- * @brief Handle an incoming ACP message
- * @param Message handle
- */
-PUBLIC void BoapControlHandleAcpMessage(void * message) {
+PRIVATE void BoapControlHandleAcpMessage(SBoapEvent * event) {
+
+    void * message = event->payload;
 
     switch (BoapAcpMsgGetId(message)) {
 
@@ -461,7 +467,7 @@ PRIVATE void BoapControlTimerCallback(void * arg) {
     MEMORY_BARRIER();
     if (likely(false == s_inHandlerMarker)) {
 
-        (void) BoapEventSend(EBoapEventType_TimerExpired, NULL);
+        (void) BoapEventSend(EBoapEvent_SamplingTimerExpired, NULL);
 
     } else {
 

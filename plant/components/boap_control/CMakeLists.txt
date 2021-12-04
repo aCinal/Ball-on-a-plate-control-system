@@ -1,6 +1,6 @@
 idf_component_register(SRCS "boap_control.c"
                        INCLUDE_DIRS "."
-                       PRIV_INCLUDE_DIRS "../../../common/include"
+                       PRIV_INCLUDE_DIRS "../../../common/include" "../../include"
                        REQUIRES boap_touchscreen
                                 boap_pid
                                 boap_filter

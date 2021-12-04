@@ -7,6 +7,7 @@
 #include <boap_listener.h>
 #include <boap_acp.h>
 #include <boap_event.h>
+#include <boap_events.h>
 #include <boap_log.h>
 #include <boap_common.h>
 #include <freertos/FreeRTOS.h>
@@ -59,7 +60,7 @@ PRIVATE void BoapListenerThreadEntryPoint(void * arg) {
         void * message = BoapAcpMsgReceive(BOAP_ACP_WAIT_FOREVER);
 
         /* Forward the message to the dispatcher */
-        if (EBoapRet_Ok != BoapEventSend(EBoapEventType_AcpMessagePending, message)) {
+        if (EBoapRet_Ok != BoapEventSend(EBoapEvent_AcpMessagePending, message)) {
 
             BoapAcpMsgDestroy(message);
         }
