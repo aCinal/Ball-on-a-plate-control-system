@@ -59,15 +59,12 @@ PUBLIC EBoapRet BoapEventDispatcherInit(void) {
     IF_OK(status) {
 
         BoapLogPrint(EBoapLogSeverityLevel_Info, "Creating the initial synchronization semaphore...");
-        /* TODO: Create the initialiation semaphore, block on it in event dispatcher, add EventDispatcherStart API,
-         * fix cleanup in other IF_OK blocks,  */
         s_initSpinlock = xSemaphoreCreateBinary();
         if (unlikely(NULL == s_initSpinlock)) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the initial sync semaphore");
             /* Cleanup */
             vQueueDelete(s_eventQueueHandle);
-            s_eventQueueHandle = NULL;
             status = EBoapRet_Error;
 
         } else {
@@ -91,9 +88,7 @@ PUBLIC EBoapRet BoapEventDispatcherInit(void) {
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the event dispatcher");
             /* Cleanup */
             vSemaphoreDelete(s_initSpinlock);
-            s_initSpinlock = NULL;
             vQueueDelete(s_eventQueueHandle);
-            s_eventQueueHandle = NULL;
             status = EBoapRet_Error;
 
         } else {
@@ -134,10 +129,7 @@ PUBLIC EBoapRet BoapEventHandlerRegister(u32 eventId, TBoapEventCallback callbac
 PUBLIC void BoapEventDispatcherStart(void) {
 
     /* Post the semaphore */
-    if (s_initSpinlock) {
-
-        (void) xSemaphoreGive(s_initSpinlock);
-    }
+    (void) xSemaphoreGive(s_initSpinlock);
 }
 
 /**
@@ -187,7 +179,6 @@ PRIVATE void BoapEventDispatcherEntryPoint(void * arg) {
 
     BoapLogPrint(EBoapLogSeverityLevel_Info, "Synchronization complete. Destroying the semaphore and entering the event loop...");
     vSemaphoreDelete(s_initSpinlock);
-    s_initSpinlock = NULL;
 
     for ( ; /* ever */ ; ) {
 

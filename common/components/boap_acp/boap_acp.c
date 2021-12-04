@@ -136,7 +136,6 @@ PUBLIC EBoapRet BoapAcpInit(u32 rxQueueLen, u32 txQueueLen) {
 
             /* Cleanup */
             vQueueDelete(s_rxQueueHandle);
-            s_rxQueueHandle = NULL;
             BoapAcpWiFiDeinit();
             status = EBoapRet_Error;
         }
@@ -155,9 +154,7 @@ PUBLIC EBoapRet BoapAcpInit(u32 rxQueueLen, u32 txQueueLen) {
 
             /* Cleanup */
             vQueueDelete(s_txQueueHandle);
-            s_txQueueHandle = NULL;
             vQueueDelete(s_rxQueueHandle);
-            s_rxQueueHandle = NULL;
             BoapAcpWiFiDeinit();
             status = EBoapRet_Error;
         }
@@ -170,11 +167,8 @@ PUBLIC EBoapRet BoapAcpInit(u32 rxQueueLen, u32 txQueueLen) {
 
             /* Cleanup */
             vTaskDelete(s_gatewayThreadHandle);
-            s_gatewayThreadHandle = NULL;
             vQueueDelete(s_txQueueHandle);
-            s_txQueueHandle = NULL;
             vQueueDelete(s_rxQueueHandle);
-            s_rxQueueHandle = NULL;
             BoapAcpWiFiDeinit();
             status = EBoapRet_Error;
         }
@@ -201,11 +195,8 @@ PUBLIC EBoapRet BoapAcpInit(u32 rxQueueLen, u32 txQueueLen) {
                     /* Cleanup */
                     BoapAcpEspNowDeinit();
                     vTaskDelete(s_gatewayThreadHandle);
-                    s_gatewayThreadHandle = NULL;
                     vQueueDelete(s_txQueueHandle);
-                    s_txQueueHandle = NULL;
                     vQueueDelete(s_rxQueueHandle);
-                    s_rxQueueHandle = NULL;
                     BoapAcpWiFiDeinit();
                     status = EBoapRet_Error;
                 }
@@ -411,11 +402,8 @@ PUBLIC void BoapAcpDeinit(void) {
     (void) BoapAcpWiFiDeinit();
 
     vTaskDelete(s_gatewayThreadHandle);
-    s_gatewayThreadHandle = NULL;
     vQueueDelete(s_txQueueHandle);
-    s_txQueueHandle = NULL;
     vQueueDelete(s_rxQueueHandle);
-    s_rxQueueHandle = NULL;
 }
 
 PRIVATE EBoapRet BoapAcpNvsInit(void) {
