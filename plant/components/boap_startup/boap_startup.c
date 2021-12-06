@@ -210,9 +210,11 @@ PRIVATE void BoapStartupLoggerEntryPoint(void * arg) {
 PRIVATE void BoapStartupAcpTxMessageDroppedHook(TBoapAcpNodeId receiver, EBoapAcpTxMessageDroppedReason reason) {
 
     BoapLogPrint(EBoapLogSeverityLevel_Debug, "Dropped outgoing ACP message to 0x%02X (reason: %d)", receiver, reason);
+    BOAP_STATS_INCREMENT(AcpTxMessagesDropped);
 }
 
 PRIVATE void BoapStartupAcpRxMessageDroppedHook(TBoapAcpNodeId sender, EBoapAcpRxMessageDroppedReason reason) {
 
     BoapLogPrint(EBoapLogSeverityLevel_Debug, "Dropped incoming ACP message from 0x%02X (reason: %d)", sender, reason);
+    BOAP_STATS_INCREMENT(AcpRxMessagesDropped);
 }

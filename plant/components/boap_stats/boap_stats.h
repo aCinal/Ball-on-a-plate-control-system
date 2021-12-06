@@ -11,16 +11,19 @@
 
 typedef struct SBoapStatsTable {
 
+    u32 AcpRxMessagesDropped;
+    u32 AcpTxMessagesDropped;
+
+    u32 AllocationFailures;
+
     u32 EventsDispatched;
     u32 EventQueueStarvations;
 
     u32 LogEntriesQueued;
-    u32 LogQueueStarvations;
     u32 LogMessageTruncations;
+    u32 LogQueueStarvations;
 
     u32 SamplingTimerFalseStarts;
-
-    u32 AllocationFailures;
 
 } SBoapStatsTable;
 

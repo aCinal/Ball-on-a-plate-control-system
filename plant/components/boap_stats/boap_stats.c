@@ -84,13 +84,15 @@ PRIVATE void BoapStatsThreadEntryPoint(void * arg) {
         vTaskDelay(BOAP_STATS_THREAD_DELAY_TIME);
 
         /* Upon wake up - collect and log the statistics */
-        BoapLogPrint(EBoapLogSeverityLevel_Info, "ED=%d, EQS=%d, LEQ=%d, LQS=%d, LMT=%d, STFS=%d, AF=%d",
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "ARXD=%u, ATXD=%u, AF=%u, ED=%u, EQS=%u, LEQ=%u, LMT=%u, LQS=%u, STFS=%u",
+                     g_boapStatsTable.AcpRxMessagesDropped,
+                     g_boapStatsTable.AcpTxMessagesDropped,
+                     g_boapStatsTable.AllocationFailures,
                      g_boapStatsTable.EventsDispatched,
                      g_boapStatsTable.EventQueueStarvations,
                      g_boapStatsTable.LogEntriesQueued,
-                     g_boapStatsTable.LogQueueStarvations,
                      g_boapStatsTable.LogMessageTruncations,
-                     g_boapStatsTable.SamplingTimerFalseStarts,
-                     g_boapStatsTable.AllocationFailures);
+                     g_boapStatsTable.LogQueueStarvations,
+                     g_boapStatsTable.SamplingTimerFalseStarts);
     }
 }
