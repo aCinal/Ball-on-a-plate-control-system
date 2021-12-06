@@ -54,6 +54,9 @@ PUBLIC EBoapRet BoapControllerInit(void) {
 
     IF_OK(status) {
 
+        /* Assert correct deployment */
+        ASSERT(BoapAcpGetOwnNodeId() == BOAP_ACP_NODE_ID_CONTROLLER, "Controller software must be correctly deployed to the correct MCU");
+
         BoapLogRegisterCommitCallback(BoapControllerLogCommitCallback);
         BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): ACP stack up and running. Logging from controller context is now possible", __FUNCTION__);
 

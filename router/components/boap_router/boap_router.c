@@ -60,6 +60,9 @@ PUBLIC EBoapRet BoapRouterInit(void) {
 
     IF_OK(status) {
 
+        /* Assert correct deployment */
+        ASSERT(BoapAcpGetOwnNodeId() == BOAP_ACP_NODE_ID_PC, "Router software must be correctly deployed to the correct MCU");
+
         /* Initialize the UART service */
         if (unlikely(EBoapRet_Ok != BoapRouterUartInit())) {
 
