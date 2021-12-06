@@ -9,6 +9,7 @@
 #include <boap_acp.h>
 #include <boap_messages.h>
 #include <boap_log.h>
+#include <boap_common.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <esp_timer.h>
@@ -60,7 +61,9 @@ PUBLIC EBoapRet BoapControllerInit(void) {
         BoapLogRegisterCommitCallback(BoapControllerLogCommitCallback);
         BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): ACP stack up and running. Logging from controller context is now possible", __FUNCTION__);
 
-        BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating the touchscreen object...");
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating the touchscreen object - screen dimensions are %f (adc: %d-%d) and %f (adc: %d-%d)...",
+            BOAP_CONTROLLER_SCREEN_DIMENSION_X_AXIS_MM, BOAP_CONTROLLER_ADC_LOW_X_AXIS, BOAP_CONTROLLER_ADC_HIGH_X_AXIS,
+            BOAP_CONTROLLER_SCREEN_DIMENSION_Y_AXIS_MM, BOAP_CONTROLLER_ADC_LOW_Y_AXIS, BOAP_CONTROLLER_ADC_HIGH_Y_AXIS);
         /* Instantiate the touchscreen object */
         s_touchscreenHandle = BoapTouchscreenCreate(BOAP_CONTROLLER_SCREEN_DIMENSION_X_AXIS_MM,
                                                     BOAP_CONTROLLER_SCREEN_DIMENSION_Y_AXIS_MM,
@@ -77,6 +80,24 @@ PUBLIC EBoapRet BoapControllerInit(void) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to instantiate the touchscreen object");
             status = EBoapRet_Error;
+
+        } else {
+
+            BoapLogPrint(EBoapLogSeverityLevel_Info, "Touchscreen object created successfully. Dumping physical layer config...");
+
+            BoapLogPrint(EBoapLogSeverityLevel_Info, "X-axis ADC channel is %u (pin %u), pin %u open on measurement, GND on pin %u, Vdd on pin %u",
+                        BOAP_CONTROLLER_ADC_CHANNEL_X_AXIS,
+                        BOAP_CONTROLLER_ADC_PIN_X_AXIS_NUM,
+                        BOAP_CONTROLLER_HIGH_Z_PIN_X_AXIS_NUM,
+                        BOAP_CONTROLLER_GND_PIN_X_AXIS_NUM,
+                        BOAP_CONTROLLER_ADC_PIN_Y_AXIS_NUM);
+
+            BoapLogPrint(EBoapLogSeverityLevel_Info, "Y-axis ADC channel is %u (pin %u), pin %u open on measurement, GND on pin %u, Vdd on pin %u",
+                        BOAP_CONTROLLER_ADC_CHANNEL_Y_AXIS,
+                        BOAP_CONTROLLER_ADC_PIN_Y_AXIS_NUM,
+                        BOAP_CONTROLLER_GND_PIN_X_AXIS_NUM,
+                        BOAP_CONTROLLER_HIGH_Z_PIN_X_AXIS_NUM,
+                        BOAP_CONTROLLER_ADC_PIN_X_AXIS_NUM);
         }
     }
 
