@@ -27,6 +27,14 @@ typedef int8_t i8;
 
 typedef float r32;
 
+/* 32-bit boolean type */
+typedef enum EBoapBool {
+    EBoapBool_BoolFalse = 0,
+    EBoapBool_BoolTrue = !EBoapBool_BoolFalse,
+
+    EBoapBoop_AlignmentEnforcer = 0xFFFFFFFFU
+} EBoapBool;
+
 /* Status enumeration */
 typedef enum EBoapRet {
     EBoapRet_Ok = 0,
@@ -49,7 +57,7 @@ typedef enum EBoapAxis {
 #define MAX(x, y)                 ( (x) ^ ( ( (x) ^ (y) ) & -( (x) < (y) ) ) )
 #define MIN(x, y)                 ( (x) ^ ( ( (x) ^ (y) ) & -( (x) > (y) ) ) )
 #define ABS(x)                    ( ( (1) ^ ( ( (-1) ^ (1) ) & -( (x) < 0 ) ) ) * (x) )
-#define ASSERT(COND, MSG)         assert((COND) && MSG)
+#define ASSERT(COND, MSG)         assert((MSG) && (COND))
 #define R32_SECONDS_TO_U64_US(S)  ( (u64) ( (S) * 1000.0f * 1000.0f ) )
 #define MM_TO_M(MILLIM)           ( (r32) ( ( (r32)(MILLIM) ) / 1000.0f ) )
 #define M_TO_MM(METERS)           ( (r32) ( ( (r32)(METERS) ) * 1000.0f ) )

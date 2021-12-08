@@ -48,7 +48,7 @@ PUBLIC EBoapRet BoapControllerInit(void) {
     TaskHandle_t messageHandlerThreadHandle;
 
     /* Initialize the ACP stack */
-    if (unlikely(BoapAcpInit(BOAP_CONTROLLER_ACP_QUEUE_LEN, BOAP_CONTROLLER_ACP_QUEUE_LEN))) {
+    if (unlikely(EBoapRet_Ok != BoapAcpInit(BOAP_CONTROLLER_ACP_QUEUE_LEN, BOAP_CONTROLLER_ACP_QUEUE_LEN))) {
 
         status = EBoapRet_Error;
     }
@@ -86,18 +86,12 @@ PUBLIC EBoapRet BoapControllerInit(void) {
             BoapLogPrint(EBoapLogSeverityLevel_Info, "Touchscreen object created successfully. Dumping physical layer config...");
 
             BoapLogPrint(EBoapLogSeverityLevel_Info, "X-axis ADC channel is %u (pin %u), pin %u open on measurement, GND on pin %u, Vdd on pin %u",
-                        BOAP_CONTROLLER_ADC_CHANNEL_X_AXIS,
-                        BOAP_CONTROLLER_ADC_PIN_X_AXIS_NUM,
-                        BOAP_CONTROLLER_HIGH_Z_PIN_X_AXIS_NUM,
-                        BOAP_CONTROLLER_GND_PIN_X_AXIS_NUM,
-                        BOAP_CONTROLLER_ADC_PIN_Y_AXIS_NUM);
+                BOAP_CONTROLLER_ADC_CHANNEL_X_AXIS, BOAP_CONTROLLER_ADC_PIN_X_AXIS_NUM, BOAP_CONTROLLER_HIGH_Z_PIN_X_AXIS_NUM,
+                BOAP_CONTROLLER_GND_PIN_X_AXIS_NUM, BOAP_CONTROLLER_ADC_PIN_Y_AXIS_NUM);
 
             BoapLogPrint(EBoapLogSeverityLevel_Info, "Y-axis ADC channel is %u (pin %u), pin %u open on measurement, GND on pin %u, Vdd on pin %u",
-                        BOAP_CONTROLLER_ADC_CHANNEL_Y_AXIS,
-                        BOAP_CONTROLLER_ADC_PIN_Y_AXIS_NUM,
-                        BOAP_CONTROLLER_GND_PIN_X_AXIS_NUM,
-                        BOAP_CONTROLLER_HIGH_Z_PIN_X_AXIS_NUM,
-                        BOAP_CONTROLLER_ADC_PIN_X_AXIS_NUM);
+                BOAP_CONTROLLER_ADC_CHANNEL_Y_AXIS, BOAP_CONTROLLER_ADC_PIN_Y_AXIS_NUM, BOAP_CONTROLLER_GND_PIN_X_AXIS_NUM,
+                BOAP_CONTROLLER_HIGH_Z_PIN_X_AXIS_NUM, BOAP_CONTROLLER_ADC_PIN_X_AXIS_NUM);
         }
     }
 
@@ -106,12 +100,12 @@ PUBLIC EBoapRet BoapControllerInit(void) {
         BoapLogPrint(EBoapLogSeverityLevel_Info, "Creating the message handler thread...");
         /* Create the message handler thread */
         if (unlikely(pdPASS != xTaskCreatePinnedToCore(BoapControllerMessageHandlerThreadEntryPoint,
-                                                        "MessageHandler",
-                                                        BOAP_CONTROLLER_MESSAGE_HANDLER_THREAD_STACK_SIZE,
-                                                        NULL,
-                                                        BOAP_CONTROLLER_MESSAGE_HANDLER_THREAD_PRIORITY,
-                                                        &messageHandlerThreadHandle,
-                                                        BOAP_RT_CORE))) {
+                                                       "MessageHandler",
+                                                       BOAP_CONTROLLER_MESSAGE_HANDLER_THREAD_STACK_SIZE,
+                                                       NULL,
+                                                       BOAP_CONTROLLER_MESSAGE_HANDLER_THREAD_PRIORITY,
+                                                       &messageHandlerThreadHandle,
+                                                       BOAP_RT_CORE))) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the message handler thread");
             /* Cleanup */

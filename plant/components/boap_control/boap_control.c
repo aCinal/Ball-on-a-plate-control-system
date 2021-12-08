@@ -18,7 +18,6 @@
 #include <boap_stats.h>
 #include <esp_timer.h>
 #include <driver/mcpwm.h>
-#include <stdbool.h>
 #include <math.h>
 
 typedef struct SBoapControlStateContext {
@@ -72,7 +71,8 @@ PRIVATE SBoapTouchscreen * s_touchscreenHandle = NULL;
 PRIVATE esp_timer_handle_t s_timerHandle = NULL;
 PRIVATE r32 s_samplingPeriod = 0.0f;
 PRIVATE volatile u64 s_timerOverflows = 0;
-PRIVATE volatile bool s_inHandlerMarker = false;
+PRIVATE volatile EBoapBool s_inHandlerMarker = EBoapBool_BoolFalse;
+PRIVATE EBoapBool s_ballTraceEnable = EBoapBool_BoolTrue;
 
 PRIVATE void BoapControlHandleTimerExpired(SBoapEvent * event);
 PRIVATE void BoapControlHandleAcpMessage(SBoapEvent * event);
@@ -80,6 +80,7 @@ PRIVATE void BoapControlTimerCallback(void * arg);
 PRIVATE void BoapControlStateTransition(void);
 PRIVATE void BoapControlTraceBallPosition(r32 xSetpoint, r32 xPosition, r32 ySetpoint, r32 yPosition);
 PRIVATE void BoapControlHandlePingReq(void * request);
+PRIVATE void BoapControlHandleBallTraceEnable(void * request);
 PRIVATE void BoapControlHandleNewSetpointReq(void * request);
 PRIVATE void BoapControlHandleGetPidSettingsReq(void * request);
 PRIVATE void BoapControlHandleSetPidSettingsReq(void * request);
@@ -127,18 +128,12 @@ PUBLIC EBoapRet BoapControlInit(void) {
         BoapLogPrint(EBoapLogSeverityLevel_Info, "Touchscreen object created successfully. Dumping physical layer config...");
 
         BoapLogPrint(EBoapLogSeverityLevel_Info, "X-axis ADC channel is %u (pin %u), pin %u open on measurement, GND on pin %u, Vdd on pin %u",
-                     BOAP_CONTROL_ADC_CHANNEL_X_AXIS,
-                     BOAP_CONTROL_ADC_PIN_X_AXIS_NUM,
-                     BOAP_CONTROL_HIGH_Z_PIN_X_AXIS_NUM,
-                     BOAP_CONTROL_GND_PIN_X_AXIS_NUM,
-                     BOAP_CONTROL_ADC_PIN_Y_AXIS_NUM);
+            BOAP_CONTROL_ADC_CHANNEL_X_AXIS, BOAP_CONTROL_ADC_PIN_X_AXIS_NUM, BOAP_CONTROL_HIGH_Z_PIN_X_AXIS_NUM,
+            BOAP_CONTROL_GND_PIN_X_AXIS_NUM, BOAP_CONTROL_ADC_PIN_Y_AXIS_NUM);
 
         BoapLogPrint(EBoapLogSeverityLevel_Info, "Y-axis ADC channel is %u (pin %u), pin %u open on measurement, GND on pin %u, Vdd on pin %u",
-                     BOAP_CONTROL_ADC_CHANNEL_Y_AXIS,
-                     BOAP_CONTROL_ADC_PIN_Y_AXIS_NUM,
-                     BOAP_CONTROL_GND_PIN_X_AXIS_NUM,
-                     BOAP_CONTROL_HIGH_Z_PIN_X_AXIS_NUM,
-                     BOAP_CONTROL_ADC_PIN_X_AXIS_NUM);
+            BOAP_CONTROL_ADC_CHANNEL_Y_AXIS, BOAP_CONTROL_ADC_PIN_Y_AXIS_NUM, BOAP_CONTROL_GND_PIN_X_AXIS_NUM,
+            BOAP_CONTROL_HIGH_Z_PIN_X_AXIS_NUM, BOAP_CONTROL_ADC_PIN_X_AXIS_NUM);
     }
 
     IF_OK(status) {
@@ -335,7 +330,7 @@ PRIVATE void BoapControlHandleTimerExpired(SBoapEvent * event) {
     (void) event;
 
     /* Trace context - save the X-axis state to be available in the next iteration (Y-axis) */
-    static bool xPositionAsserted = false;
+    static EBoapBool xPositionAsserted = EBoapBool_BoolFalse;
     static r32 xPositionFilteredMm = 0.0f;
     static r32 xSetpointMm = 0.0f;
 
@@ -371,7 +366,7 @@ PRIVATE void BoapControlHandleTimerExpired(SBoapEvent * event) {
         /* Set servo position */
         BoapServoSetPosition(s_stateContexts[s_currentStateAxis].ServoObject, regulatorOutputRad);
 
-        if (EBoapAxis_Y == s_currentStateAxis && xPositionAsserted) {
+        if (EBoapAxis_Y == s_currentStateAxis && xPositionAsserted && s_ballTraceEnable) {
 
             /* Send the trace message */
             BoapControlTraceBallPosition(xSetpointMm, xPositionFilteredMm,
@@ -412,6 +407,11 @@ PRIVATE void BoapControlHandleAcpMessage(SBoapEvent * event) {
     case BOAP_ACP_PING_REQ:
 
         BoapControlHandlePingReq(message);
+        break;
+
+    case BOAP_ACP_BALL_TRACE_ENABLE:
+
+        BoapControlHandleBallTraceEnable(message);
         break;
 
     case BOAP_ACP_NEW_SETPOINT_REQ:
@@ -514,6 +514,23 @@ PRIVATE void BoapControlHandlePingReq(void * request) {
 
     /* Destroy the request message */
     BoapAcpMsgDestroy(request);
+}
+
+PRIVATE void BoapControlHandleBallTraceEnable(void * request) {
+
+    SBoapAcpBallTraceEnable * reqPayload = (SBoapAcpBallTraceEnable *) BoapAcpMsgGetPayload(request);
+
+    if (s_ballTraceEnable != reqPayload->Enable) {
+
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "Ball tracing %s",
+            (reqPayload->Enable == EBoapBool_BoolFalse) ? "disabled" : "enabled");
+
+        /* Set the global trace enable flag */
+        s_ballTraceEnable = reqPayload->Enable;
+    }
+
+    /* Echo the message back */
+    BoapApcMsgEcho(request);
 }
 
 PRIVATE void BoapControlHandleNewSetpointReq(void * request) {

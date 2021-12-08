@@ -4,7 +4,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
-from defs.BoapCommon import EBoapAxis, EBoapRet
+from defs.BoapCommon import EBoapBool, EBoapRet, EBoapAxis
 from defs.BoapAcpErrors import BoapAcpUnknownMsgIdError, BoapAcpInvalidMsgSizeError
 import struct
 
@@ -18,20 +18,21 @@ class BoapAcpMsgId:
     BOAP_ACP_PING_REQ                 = 0x00
     BOAP_ACP_PING_RESP                = 0x01
     BOAP_ACP_BALL_TRACE_IND           = 0x02
-    BOAP_ACP_NEW_SETPOINT_REQ         = 0x03
-    BOAP_ACP_GET_PID_SETTINGS_REQ     = 0x04
-    BOAP_ACP_GET_PID_SETTINGS_RESP    = 0x05
-    BOAP_ACP_SET_PID_SETTINGS_REQ     = 0x06
-    BOAP_ACP_SET_PID_SETTINGS_RESP    = 0x07
-    BOAP_ACP_GET_SAMPLING_PERIOD_REQ  = 0x08
-    BOAP_ACP_GET_SAMPLING_PERIOD_RESP = 0x09
-    BOAP_ACP_SET_SAMPLING_PERIOD_REQ  = 0x0A
-    BOAP_ACP_SET_SAMPLING_PERIOD_RESP = 0x0B
-    BOAP_ACP_GET_FILTER_ORDER_REQ     = 0x0C
-    BOAP_ACP_GET_FILTER_ORDER_RESP    = 0x0D
-    BOAP_ACP_SET_FILTER_ORDER_REQ     = 0x0E
-    BOAP_ACP_SET_FILTER_ORDER_RESP    = 0x0F
-    BOAP_ACP_LOG_COMMIT               = 0x10
+    BOAP_ACP_BALL_TRACE_ENABLE        = 0x03
+    BOAP_ACP_NEW_SETPOINT_REQ         = 0x04
+    BOAP_ACP_GET_PID_SETTINGS_REQ     = 0x05
+    BOAP_ACP_GET_PID_SETTINGS_RESP    = 0x06
+    BOAP_ACP_SET_PID_SETTINGS_REQ     = 0x07
+    BOAP_ACP_SET_PID_SETTINGS_RESP    = 0x08
+    BOAP_ACP_GET_SAMPLING_PERIOD_REQ  = 0x09
+    BOAP_ACP_GET_SAMPLING_PERIOD_RESP = 0x0A
+    BOAP_ACP_SET_SAMPLING_PERIOD_REQ  = 0x0B
+    BOAP_ACP_SET_SAMPLING_PERIOD_RESP = 0x0C
+    BOAP_ACP_GET_FILTER_ORDER_REQ     = 0x0D
+    BOAP_ACP_GET_FILTER_ORDER_RESP    = 0x0E
+    BOAP_ACP_SET_FILTER_ORDER_REQ     = 0x0F
+    BOAP_ACP_SET_FILTER_ORDER_RESP    = 0x10
+    BOAP_ACP_LOG_COMMIT               = 0x11
 
 # Abstract class
 class BoapAcpMsgPayload:
@@ -82,6 +83,18 @@ class SBoapAcpBallTraceInd(BoapAcpMsgPayload):
 
     def Parse(self, serialized):
         self.SampleNumber, self.SetpointX, self.PositionX, self.SetpointY, self.PositionY = struct.unpack('<Qffff', serialized)
+        return self
+
+class SBoapAcpBallTraceEnable(BoapAcpMsgPayload):
+    def __init__(self):
+        super().__init__(4)
+        self.Enable = EBoapBool.BoolTrue
+
+    def Serialize(self):
+        return struct.pack('<I', self.Enable)
+
+    def Parse(self, serialized):
+        self.Enable, = struct.unpack('<I', serialized)
         return self
 
 class SBoapAcpNewSetpointReq(BoapAcpMsgPayload):
@@ -300,6 +313,7 @@ def BoapAcpMsgGetPayloadById(msgId):
         BoapAcpMsgId.BOAP_ACP_PING_REQ : None,
         BoapAcpMsgId.BOAP_ACP_PING_RESP : None,
         BoapAcpMsgId.BOAP_ACP_BALL_TRACE_IND : SBoapAcpBallTraceInd,
+        BoapAcpMsgId.BOAP_ACP_BALL_TRACE_ENABLE : SBoapAcpBallTraceEnable,
         BoapAcpMsgId.BOAP_ACP_NEW_SETPOINT_REQ : SBoapAcpNewSetpointReq,
         BoapAcpMsgId.BOAP_ACP_GET_PID_SETTINGS_REQ : SBoapAcpGetPidSettingsReq,
         BoapAcpMsgId.BOAP_ACP_GET_PID_SETTINGS_RESP : SBoapAcpGetPidSettingsResp,

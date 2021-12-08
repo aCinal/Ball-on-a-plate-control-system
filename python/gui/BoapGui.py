@@ -62,5 +62,8 @@ class BoapGui:
     def GetTracePanelMessageQueue(self):
         return self.tracePanel.msgQueue
 
-    def GetControlPanelMessageQueue(self):
-        return self.controlPanel.msgQueue
+    def GetControlPanelConfiguratorMessageQueue(self):
+        return self.controlPanel.configuratorMsgQueue
+
+    def GetControlPanelTraceEnableMessageQueue(self):
+        return self.controlPanel.traceEnableMsgQueue

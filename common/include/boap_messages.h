@@ -14,20 +14,21 @@
 #define BOAP_ACP_PING_REQ                  ( (TBoapAcpMsgId) 0x00 )
 #define BOAP_ACP_PING_RESP                 ( (TBoapAcpMsgId) 0x01 )
 #define BOAP_ACP_BALL_TRACE_IND            ( (TBoapAcpMsgId) 0x02 )
-#define BOAP_ACP_NEW_SETPOINT_REQ          ( (TBoapAcpMsgId) 0x03 )
-#define BOAP_ACP_GET_PID_SETTINGS_REQ      ( (TBoapAcpMsgId) 0x04 )
-#define BOAP_ACP_GET_PID_SETTINGS_RESP     ( (TBoapAcpMsgId) 0x05 )
-#define BOAP_ACP_SET_PID_SETTINGS_REQ      ( (TBoapAcpMsgId) 0x06 )
-#define BOAP_ACP_SET_PID_SETTINGS_RESP     ( (TBoapAcpMsgId) 0x07 )
-#define BOAP_ACP_GET_SAMPLING_PERIOD_REQ   ( (TBoapAcpMsgId) 0x08 )
-#define BOAP_ACP_GET_SAMPLING_PERIOD_RESP  ( (TBoapAcpMsgId) 0x09 )
-#define BOAP_ACP_SET_SAMPLING_PERIOD_REQ   ( (TBoapAcpMsgId) 0x0A )
-#define BOAP_ACP_SET_SAMPLING_PERIOD_RESP  ( (TBoapAcpMsgId) 0x0B )
-#define BOAP_ACP_GET_FILTER_ORDER_REQ      ( (TBoapAcpMsgId) 0x0C )
-#define BOAP_ACP_GET_FILTER_ORDER_RESP     ( (TBoapAcpMsgId) 0x0D )
-#define BOAP_ACP_SET_FILTER_ORDER_REQ      ( (TBoapAcpMsgId) 0x0E )
-#define BOAP_ACP_SET_FILTER_ORDER_RESP     ( (TBoapAcpMsgId) 0x0F )
-#define BOAP_ACP_LOG_COMMIT                ( (TBoapAcpMsgId) 0x10 )
+#define BOAP_ACP_BALL_TRACE_ENABLE         ( (TBoapAcpMsgId) 0x03 )
+#define BOAP_ACP_NEW_SETPOINT_REQ          ( (TBoapAcpMsgId) 0x04 )
+#define BOAP_ACP_GET_PID_SETTINGS_REQ      ( (TBoapAcpMsgId) 0x05 )
+#define BOAP_ACP_GET_PID_SETTINGS_RESP     ( (TBoapAcpMsgId) 0x06 )
+#define BOAP_ACP_SET_PID_SETTINGS_REQ      ( (TBoapAcpMsgId) 0x07 )
+#define BOAP_ACP_SET_PID_SETTINGS_RESP     ( (TBoapAcpMsgId) 0x08 )
+#define BOAP_ACP_GET_SAMPLING_PERIOD_REQ   ( (TBoapAcpMsgId) 0x09 )
+#define BOAP_ACP_GET_SAMPLING_PERIOD_RESP  ( (TBoapAcpMsgId) 0x0A )
+#define BOAP_ACP_SET_SAMPLING_PERIOD_REQ   ( (TBoapAcpMsgId) 0x0B )
+#define BOAP_ACP_SET_SAMPLING_PERIOD_RESP  ( (TBoapAcpMsgId) 0x0C )
+#define BOAP_ACP_GET_FILTER_ORDER_REQ      ( (TBoapAcpMsgId) 0x0D )
+#define BOAP_ACP_GET_FILTER_ORDER_RESP     ( (TBoapAcpMsgId) 0x0E )
+#define BOAP_ACP_SET_FILTER_ORDER_REQ      ( (TBoapAcpMsgId) 0x0F )
+#define BOAP_ACP_SET_FILTER_ORDER_RESP     ( (TBoapAcpMsgId) 0x10 )
+#define BOAP_ACP_LOG_COMMIT                ( (TBoapAcpMsgId) 0x11 )
 
 typedef struct SBoapAcpBallTraceInd {
     u64 SampleNumber;
@@ -36,6 +37,10 @@ typedef struct SBoapAcpBallTraceInd {
     r32 SetpointY;
     r32 PositionY;
 } SBoapAcpBallTraceInd;
+
+typedef struct SBoapAcpBallTraceEnable {
+    EBoapBool Enable;
+} SBoapAcpBallTraceEnable;
 
 typedef struct SBoapAcpNewSetpointReq {
     r32 SetpointX;

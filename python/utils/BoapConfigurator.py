@@ -12,12 +12,11 @@ from defs.BoapCommon import EBoapAxis, EBoapRet
 import copy
 
 class BoapConfigurator:
-    RECEIVE_TIMEOUT = 1
 
-    def __init__(self, acp, logger, msgQueue):
+    def __init__(self, acp, logger, msgQueue, receiveTimeout):
         self.log = logger
         self.acp = acp
-        self.transactionRunner = BoapAcpTransactionRunner(self.acp, self.RECEIVE_TIMEOUT, msgQueue)
+        self.transactionRunner = BoapAcpTransactionRunner(self.acp, receiveTimeout, msgQueue)
 
     def FetchCurrentSettings(self):
         # Start with defaults

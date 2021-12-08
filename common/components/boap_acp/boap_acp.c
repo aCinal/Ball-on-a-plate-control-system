@@ -365,6 +365,20 @@ PUBLIC void BoapAcpMsgDestroy(void * msg) {
 }
 
 /**
+ * @brief Echo the message back to sender
+ * @param msg Message handle
+ */
+PUBLIC void BoapApcMsgEcho(void * msg) {
+
+    /* Swap sender and receiver */
+    TBoapAcpNodeId swap = BoapAcpMsgGetReceiver(msg);
+    ((SBoapAcpMsg*) msg)->header.receiver = BoapAcpMsgGetSender(msg);
+    ((SBoapAcpMsg*) msg)->header.sender = swap;
+    /* Send the message */
+    BoapAcpMsgSend(msg);
+}
+
+/**
  * @brief Register a hook to be called on TX message dropped event
  * @param hook
  */

@@ -117,17 +117,23 @@ TBoapAcpNodeId BoapAcpMsgGetReceiver(const void * msg);
 void BoapAcpMsgSend(void * msg);
 
 /**
+ * @brief Receive an ACP message addressed to this node
+ * @param timeout Timeout in milliseconds
+ * @return Message handle
+ */
+void * BoapAcpMsgReceive(u32 timeout);
+
+/**
  * @brief Destroy an ACP message
  * @param msg Message handle
  */
 void BoapAcpMsgDestroy(void * msg);
 
 /**
- * @brief Receive an ACP message addressed to this node
- * @param timeout Timeout in milliseconds
- * @return Message handle
+ * @brief Echo the message back to sender
+ * @param msg Message handle
  */
-void * BoapAcpMsgReceive(u32 timeout);
+void BoapApcMsgEcho(void * msg);
 
 /**
  * @brief Register a hook to be called on TX message dropped event

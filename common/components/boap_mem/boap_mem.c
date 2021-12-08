@@ -7,7 +7,6 @@
 #include <boap_mem.h>
 #include <boap_common.h>
 #include <freertos/FreeRTOS.h>
-#include <assert.h>
 
 PRIVATE TBoapMemAllocFailureHook s_allocFailureHook = NULL;
 PRIVATE TBoapMemIsrUnrefHook s_isrUnrefHook = NULL;
@@ -59,7 +58,7 @@ PUBLIC void BoapMemUnref(void * block) {
     if (xPortInIsrContext()) {
 
         /* Assert a hook is registered to handle memory unref from ISR context */
-        assert(NULL != s_isrUnrefHook);
+        ASSERT(NULL != s_isrUnrefHook, "Must not try to free memory from ISR context with no hook registered");
         s_isrUnrefHook(block);
 
     } else {

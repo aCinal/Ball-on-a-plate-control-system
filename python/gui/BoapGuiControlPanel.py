@@ -4,6 +4,8 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
+from defs.BoapAcpMessages import BoapAcpMsgId, BoapAcpNodeId
+from defs.BoapCommon import EBoapBool
 from defs.BoapPlantSettings import BoapPlantSettings
 from utils.BoapConfigurator import BoapConfigurator
 from PyQt6 import QtCore, QtWidgets
@@ -12,6 +14,7 @@ import queue
 
 class BoapGuiControlPanel:
     RECEIVE_TIMEOUT = 1
+    TRACE_ENABLE_SAMPLING_PERIOD_THRESHOLD = 0.05
 
     def __init__(self, parentWidget, acp, logger):
         self.acp = acp
@@ -28,13 +31,14 @@ class BoapGuiControlPanel:
         # Add the widgets to the grid
         self.AddWidgetsToLayout()
 
-        # Create the message queue
-        self.msgQueue = queue.Queue()
+        # Create the message queues
+        self.configuratorMsgQueue = queue.Queue()
+        self.traceEnableMsgQueue = queue.Queue()
         # Create the new settings queue
         self.newSettingsQueue = queue.Queue()
 
         # Create the configurator
-        self.configurator = BoapConfigurator(self.acp, self.log, self.msgQueue)
+        self.configurator = BoapConfigurator(self.acp, self.log, self.configuratorMsgQueue, self.RECEIVE_TIMEOUT)
 
         def WorkerThreadEntryPoint():
             self.log.Debug('Control panel worker thread entered')
@@ -49,7 +53,11 @@ class BoapGuiControlPanel:
                 self.log.Debug('Received new settings from queue. Invoking configurator...')
                 # Run ACP transactions
                 ackedSettings = self.configurator.Configure(self.currentSettings, newSettings)
-                self.log.Debug('Configurator returned. Setting new placeholders...')
+
+                # On sampling period change
+                if (self.currentSettings.SamplingPeriod != ackedSettings.SamplingPeriod):
+                    # Disable trace if too low a sampling period
+                    self.HandleTraceEnable(ackedSettings.SamplingPeriod)
 
                 # Set new placeholders
                 self.SetNewPlaceholdersInTextFields(ackedSettings)
@@ -207,3 +215,32 @@ class BoapGuiControlPanel:
         # Clear all text fields
         for key in self.textFields:
             self.textFields[key].clear()
+
+    def HandleTraceEnable(self, samplingPeriod):
+        # Handle tracing enable according to the sampling period
+        if samplingPeriod < self.TRACE_ENABLE_SAMPLING_PERIOD_THRESHOLD:
+            # Disable tracing
+            self.TraceEnable(False)
+        elif samplingPeriod >= self.TRACE_ENABLE_SAMPLING_PERIOD_THRESHOLD:
+            # Reenable tracing
+            self.TraceEnable(True)
+
+    def TraceEnable(self, enable):
+        # Send the request...
+        request = self.acp.MsgCreate(BoapAcpNodeId.BOAP_ACP_NODE_ID_PLANT, BoapAcpMsgId.BOAP_ACP_BALL_TRACE_ENABLE)
+        reqPayload = request.GetPayload()
+        reqPayload.Enable = EBoapBool.BoolTrue if enable else EBoapBool.BoolFalse
+        self.acp.MsgSend(request)
+
+        # ...and wait for response (echo)
+        try:
+            response = self.traceEnableMsgQueue.get(timeout=self.RECEIVE_TIMEOUT)
+            respPayload = response.GetPayload()
+            if respPayload.Enable == reqPayload.Enable:
+                self.log.Info('Tracing %s' % ('enabled' if respPayload.Enable == EBoapBool.BoolTrue else 'disabled'))
+            else:
+                self.log.Error('Unexpected payload in response to BOAP_ACP_BALL_TRACE_ENABLE (%s and should be %s)' % \
+                    ('true' if respPayload.Enable == EBoapBool.BoolTrue else 'false', \
+                     'true' if reqPayload.Enable == EBoapBool.BoolTrue else 'false'))
+        except queue.Empty:
+            self.log.Error('Failed to receive acknowledgement to trace enable message')

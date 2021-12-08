@@ -44,14 +44,15 @@ def main():
         [
             BoapAcpLocalRouting(keepalive.msgQueue, [ BoapAcpMsgId.BOAP_ACP_PING_RESP ]),
             BoapAcpLocalRouting(gui.GetTracePanelMessageQueue(), [ BoapAcpMsgId.BOAP_ACP_BALL_TRACE_IND ]),
-            BoapAcpLocalRouting(gui.GetControlPanelMessageQueue(), [
+            BoapAcpLocalRouting(gui.GetControlPanelConfiguratorMessageQueue(), [
                 BoapAcpMsgId.BOAP_ACP_GET_PID_SETTINGS_RESP,
                 BoapAcpMsgId.BOAP_ACP_SET_PID_SETTINGS_RESP,
                 BoapAcpMsgId.BOAP_ACP_GET_SAMPLING_PERIOD_RESP,
                 BoapAcpMsgId.BOAP_ACP_SET_SAMPLING_PERIOD_RESP,
                 BoapAcpMsgId.BOAP_ACP_GET_FILTER_ORDER_RESP,
                 BoapAcpMsgId.BOAP_ACP_SET_FILTER_ORDER_RESP
-            ])
+            ]),
+            BoapAcpLocalRouting(gui.GetControlPanelTraceEnableMessageQueue(), [ BoapAcpMsgId.BOAP_ACP_BALL_TRACE_ENABLE ])
         ]
     )
 
