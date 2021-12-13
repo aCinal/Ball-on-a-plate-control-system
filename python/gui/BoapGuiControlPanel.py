@@ -7,6 +7,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from defs.BoapAcpMessages import BoapAcpMsgId, BoapAcpNodeId
 from defs.BoapCommon import EBoapBool
 from defs.BoapPlantSettings import BoapPlantSettings
+from gui.BoapGuiControllerWindow import BoapGuiControllerWindow
 from utils.BoapConfigurator import BoapConfigurator
 from PyQt6 import QtCore, QtWidgets
 import threading
@@ -26,6 +27,8 @@ class BoapGuiControlPanel:
         self.InitLabels()
         # Define the text fields
         self.InitTextFields()
+        # Init show controller button
+        self.InitShowControllerButton()
         # Init OK button
         self.InitOkButton()
         # Add the widgets to the grid
@@ -108,6 +111,23 @@ class BoapGuiControlPanel:
         self.textFields['yf'] = QtWidgets.QLineEdit()
         self.textFields['sp'] = QtWidgets.QLineEdit()
 
+    def InitShowControllerButton(self):
+        self.showControllerButton = QtWidgets.QPushButton('Controller')
+        self.controllerWindow = None
+
+        def OnClick():
+            def OnClose():
+                self.controllerWindow = None
+
+            # Show the controller window if not already showing
+            if not self.controllerWindow:
+                self.controllerWindow = BoapGuiControllerWindow(322, 247, OnClose, self.acp)
+                self.controllerWindow.show()
+            else:
+                self.log.Warning('Controller window already open')
+
+        self.showControllerButton.clicked.connect(OnClick)
+
     def InitOkButton(self):
         self.okButton = QtWidgets.QPushButton('OK')
 
@@ -150,6 +170,9 @@ class BoapGuiControlPanel:
         self.layout.addWidget(self.textFields['yd'], 3, 2)
         self.layout.addWidget(self.textFields['yf'], 4, 2)
         self.layout.addWidget(self.textFields['sp'], 5, 2)
+
+        # Add the show controller button
+        self.layout.addWidget(self.showControllerButton, 6, 1)
 
         # Add the OK button
         self.layout.addWidget(self.okButton, 6, 2)

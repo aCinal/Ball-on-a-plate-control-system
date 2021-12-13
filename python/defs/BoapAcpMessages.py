@@ -104,27 +104,10 @@ class SBoapAcpNewSetpointReq(BoapAcpMsgPayload):
         self.SetpointY = 0.0
 
     def Serialize(self):
-        return struct.pack('<ff', self.Setpoint_X, self.Setpoint_Y)
+        return struct.pack('<ff', self.SetpointX, self.SetpointY)
 
     def Parse(self, serialized):
         self.SetpointX, self.SetpointY = struct.unpack('<ff', serialized);
-        return self
-
-class SBoapAcpNewSetpointResp(BoapAcpMsgPayload):
-    def __init__(self):
-        super().__init__(8)
-        self.OldSetpointX = 0.0
-        self.OldSetpointY = 0.0
-        self.NewSetpointX = 0.0
-        self.NewSetpointY = 0.0
-
-    def Serialize(self):
-        return struct.pack('<ffff', self.OldSetpoint_X, self.OldSetpoint_Y, \
-                self.NewSetpointX, self.NewSetpointY)
-
-    def Parse(self, serialized):
-        self.OldSetpointX, self.OldSetpointY, self.NewSetpointX, self.NewSetpointY = \
-                struct.unpack('<ffff', serialized);
         return self
 
 class SBoapAcpGetPidSettingsReq(BoapAcpMsgPayload):
