@@ -26,35 +26,36 @@ typedef struct SBoapControlStateContext {
     SBoapServo * ServoObject;
 } SBoapControlStateContext;
 
-#define BOAP_CONTROL_SAMPLING_PERIOD_TO_TIMER_PERIOD(TS)  R32_SECONDS_TO_U64_US( (TS) / 2.0f )
-#define BOAP_CONTROL_SAMPLING_PERIOD_DEFAULT              0.05
-#define BOAP_CONTROL_GET_SAMPLE_NUMBER()                  ( s_timerOverflows / 2U )
+#define BOAP_CONTROL_SAMPLING_PERIOD_TO_TIMER_PERIOD(TS)        R32_SECONDS_TO_U64_US( (TS) / 2.0f )
+#define BOAP_CONTROL_SAMPLING_PERIOD_DEFAULT                    0.05
+#define BOAP_CONTROL_GET_SAMPLE_NUMBER()                        ( s_timerOverflows / 2U )
 
-#define BOAP_CONTROL_SATURATION_THRESHOLD                 ( asin(1) / 3.0 )
-#define BOAP_CONTROL_PROPORTIONAL_GAIN_DEFAULT            1.0f
-#define BOAP_CONTROL_INTEGRAL_GAIN_DEFAULT                0.0f
-#define BOAP_CONTROL_DERIVATIVE_GAIN_DEFAULT              0.5f
-#define BOAP_CONTROL_FILTER_ORDER_DEFAULT                 5
+#define BOAP_CONTROL_SATURATION_THRESHOLD                       ( asin(1) / 3.0 )
+#define BOAP_CONTROL_PROPORTIONAL_GAIN_DEFAULT                  0.0f
+#define BOAP_CONTROL_INTEGRAL_GAIN_DEFAULT                      0.0f
+#define BOAP_CONTROL_DERIVATIVE_GAIN_DEFAULT                    0.0f
+#define BOAP_CONTROL_FILTER_ORDER_DEFAULT                       1
 
-#define BOAP_CONTROL_SET_POINT_X_AXIS_MM_DEFAULT          0
-#define BOAP_CONTROL_SET_POINT_Y_AXIS_MM_DEFAULT          0
+#define BOAP_CONTROL_SET_POINT_X_AXIS_MM_DEFAULT                0
+#define BOAP_CONTROL_SET_POINT_Y_AXIS_MM_DEFAULT                0
 
-#define BOAP_CONTROL_ADC_MULTISAMPLING                    4
-#define BOAP_CONTROL_GND_PIN_X_AXIS                       MACRO_EXPAND(BOAP_GPIO_NUM, BOAP_CONTROL_GND_PIN_X_AXIS_NUM)
-#define BOAP_CONTROL_HIGH_Z_PIN_X_AXIS                    MACRO_EXPAND(BOAP_GPIO_NUM, BOAP_CONTROL_HIGH_Z_PIN_X_AXIS_NUM)
-#define BOAP_CONTROL_ADC_CHANNEL_X_AXIS                   MACRO_EXPAND(BOAP_TOUCHSCREEN_GPIO_NUM_TO_CHANNEL, BOAP_CONTROL_ADC_PIN_X_AXIS_NUM)
-#define BOAP_CONTROL_ADC_CHANNEL_Y_AXIS                   MACRO_EXPAND(BOAP_TOUCHSCREEN_GPIO_NUM_TO_CHANNEL, BOAP_CONTROL_ADC_PIN_Y_AXIS_NUM)
+#define BOAP_CONTROL_ADC_MULTISAMPLING                          4
+#define BOAP_CONTROL_GND_PIN_X_AXIS                             MACRO_EXPAND(BOAP_GPIO_NUM, BOAP_CONTROL_GND_PIN_X_AXIS_NUM)
+#define BOAP_CONTROL_HIGH_Z_PIN_X_AXIS                          MACRO_EXPAND(BOAP_GPIO_NUM, BOAP_CONTROL_HIGH_Z_PIN_X_AXIS_NUM)
+#define BOAP_CONTROL_ADC_CHANNEL_X_AXIS                         MACRO_EXPAND(BOAP_TOUCHSCREEN_GPIO_NUM_TO_CHANNEL, BOAP_CONTROL_ADC_PIN_X_AXIS_NUM)
+#define BOAP_CONTROL_ADC_CHANNEL_Y_AXIS                         MACRO_EXPAND(BOAP_TOUCHSCREEN_GPIO_NUM_TO_CHANNEL, BOAP_CONTROL_ADC_PIN_Y_AXIS_NUM)
 
-#define BOAP_CONTROL_SPURIOUS_NO_TOUCH_TOLERANCE          5
+#define BOAP_CONTROL_NO_TOUCH_TOLERANCE_MS                      1000
+#define BOAP_CONTROL_SAMPLING_PERIOD_TO_NO_TOUCH_TOLERANCE(TS)  ( BOAP_CONTROL_NO_TOUCH_TOLERANCE_MS / R32_SECONDS_TO_U32_MS(TS) )
 
-#define BOAP_CONTROL_PWM_FREQUENCY                        50
-#define BOAP_CONTROL_PWM_UNIT_X_AXIS                      MCPWM_UNIT_0
-#define BOAP_CONTROL_PWM_UNIT_Y_AXIS                      MCPWM_UNIT_1
-#define BOAP_CONTROL_PWM_PIN_X_AXIS                       MACRO_EXPAND(BOAP_GPIO_NUM, BOAP_CONTROL_PWM_PIN_X_AXIS_NUM)
-#define BOAP_CONTROL_PWM_PIN_Y_AXIS                       MACRO_EXPAND(BOAP_GPIO_NUM, BOAP_CONTROL_PWM_PIN_Y_AXIS_NUM)
-#define BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US                500
-#define BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US                2500
-#define BOAP_CONTROL_SERVO_MAX_ANGLE_RAD                  asin(1)
+#define BOAP_CONTROL_PWM_FREQUENCY                              50
+#define BOAP_CONTROL_PWM_UNIT_X_AXIS                            MCPWM_UNIT_0
+#define BOAP_CONTROL_PWM_UNIT_Y_AXIS                            MCPWM_UNIT_1
+#define BOAP_CONTROL_PWM_PIN_X_AXIS                             MACRO_EXPAND(BOAP_GPIO_NUM, BOAP_CONTROL_PWM_PIN_X_AXIS_NUM)
+#define BOAP_CONTROL_PWM_PIN_Y_AXIS                             MACRO_EXPAND(BOAP_GPIO_NUM, BOAP_CONTROL_PWM_PIN_Y_AXIS_NUM)
+#define BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US                      500
+#define BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US                      2500
+#define BOAP_CONTROL_SERVO_MAX_ANGLE_RAD                        asin(1)
 
 PRIVATE EBoapAxis s_currentStateAxis = EBoapAxis_X;
 PRIVATE SBoapControlStateContext s_stateContexts[] = {
@@ -70,6 +71,7 @@ PRIVATE SBoapControlStateContext s_stateContexts[] = {
 PRIVATE SBoapTouchscreen * s_touchscreenHandle = NULL;
 PRIVATE esp_timer_handle_t s_timerHandle = NULL;
 PRIVATE r32 s_samplingPeriod = 0.0f;
+PRIVATE u32 s_noTouchToleranceSamples = 0;
 PRIVATE volatile u64 s_timerOverflows = 0;
 PRIVATE volatile EBoapBool s_inHandlerMarker = EBoapBool_BoolFalse;
 PRIVATE EBoapBool s_ballTraceEnable = EBoapBool_BoolTrue;
@@ -78,6 +80,7 @@ PRIVATE void BoapControlHandleTimerExpired(SBoapEvent * event);
 PRIVATE void BoapControlHandleAcpMessage(SBoapEvent * event);
 PRIVATE void BoapControlTimerCallback(void * arg);
 PRIVATE void BoapControlStateTransition(void);
+PRIVATE void BoapControlSetNewSamplingPeriod(r32 samplingPeriod);
 PRIVATE void BoapControlTraceBallPosition(r32 xSetpoint, r32 xPosition, r32 ySetpoint, r32 yPosition);
 PRIVATE void BoapControlHandlePingReq(void * request);
 PRIVATE void BoapControlHandleBallTraceEnable(void * request);
@@ -97,8 +100,9 @@ PUBLIC EBoapRet BoapControlInit(void) {
 
     EBoapRet status = EBoapRet_Ok;
 
-    s_samplingPeriod = BOAP_CONTROL_SAMPLING_PERIOD_DEFAULT;
-    BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): Initialization started. Default sampling period is %f", __FUNCTION__, s_samplingPeriod);
+    BoapControlSetNewSamplingPeriod(BOAP_CONTROL_SAMPLING_PERIOD_DEFAULT);
+    BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): Initialization started. Default sampling period is %f (no touch tolerance is %d ms or %d samples)", \
+        __FUNCTION__, s_samplingPeriod, BOAP_CONTROL_NO_TOUCH_TOLERANCE_MS, s_noTouchToleranceSamples);
 
     /* Register event handlers */
     (void) BoapEventHandlerRegister(EBoapEvent_SamplingTimerExpired, BoapControlHandleTimerExpired);
@@ -355,7 +359,7 @@ PRIVATE void BoapControlHandleTimerExpired(SBoapEvent * event) {
     }
 
     /* Assert the ball is still on the plate */
-    if (likely((NULL != touchscreenReading) || (noTouchCounter[s_currentStateAxis] < BOAP_CONTROL_SPURIOUS_NO_TOUCH_TOLERANCE))) {
+    if (likely((NULL != touchscreenReading) || (noTouchCounter[s_currentStateAxis] < s_noTouchToleranceSamples))) {
 
         /* On spurious no touch condition, unfilteredPositionMm[s_currentStateAxis] does not change, so use its old value */
 
@@ -396,6 +400,12 @@ PRIVATE void BoapControlHandleTimerExpired(SBoapEvent * event) {
     /* Mark exit out of the event handler */
     s_inHandlerMarker = false;
     MEMORY_BARRIER();
+}
+
+PRIVATE void BoapControlSetNewSamplingPeriod(r32 samplingPeriod) {
+
+    s_samplingPeriod = samplingPeriod;
+    s_noTouchToleranceSamples = BOAP_CONTROL_SAMPLING_PERIOD_TO_NO_TOUCH_TOLERANCE(samplingPeriod);
 }
 
 PRIVATE void BoapControlHandleAcpMessage(SBoapEvent * event) {
@@ -639,7 +649,7 @@ PRIVATE void BoapControlHandleSetSamplingPeriodReq(void * request) {
     BoapLogPrint(EBoapLogSeverityLevel_Info, "Sampling period changed from %f to %f", oldSamplingPeriod, reqPayload->SamplingPeriod);
 
     /* Store the new sampling period */
-    s_samplingPeriod = reqPayload->SamplingPeriod;
+    BoapControlSetNewSamplingPeriod(reqPayload->SamplingPeriod);
 
     /* Send the response message */
     void * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_SET_SAMPLING_PERIOD_RESP, sizeof(SBoapAcpSetSamplingPeriodResp));

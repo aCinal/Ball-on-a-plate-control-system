@@ -63,7 +63,7 @@ class BoapConfigurator:
                     % (newSettings.XAxis.ProportionalGain, newSettings.XAxis.IntegralGain, newSettings.XAxis.DerivativeGain))
                 respPayload = self.ConfigurePidSettings(EBoapAxis.X, newSettings.XAxis)
                 self.log.Info('X-axis PID settings set to: kp=%f, ki=%f, kd=%f' \
-                    % (ackedSettings.XAxis.ProportionalGain, ackedSettings.XAxis.IntegralGain, ackedSettings.XAxis.DerivativeGain))
+                    % (respPayload.NewProportionalGain, respPayload.NewIntegralGain, respPayload.NewDerivativeGain))
                 ackedSettings.XAxis.ProportionalGain = respPayload.NewProportionalGain
                 ackedSettings.XAxis.IntegralGain = respPayload.NewIntegralGain
                 ackedSettings.XAxis.DerivativeGain = respPayload.NewDerivativeGain
@@ -73,7 +73,7 @@ class BoapConfigurator:
                     % (newSettings.YAxis.ProportionalGain, newSettings.YAxis.IntegralGain, newSettings.YAxis.DerivativeGain))
                 respPayload = self.ConfigurePidSettings(EBoapAxis.Y, newSettings.YAxis)
                 self.log.Info('Y-axis PID settings set to: kp=%f, ki=%f, kd=%f' \
-                    % (ackedSettings.YAxis.ProportionalGain, ackedSettings.YAxis.IntegralGain, ackedSettings.YAxis.DerivativeGain))
+                    % (respPayload.NewProportionalGain, respPayload.NewIntegralGain, respPayload.NewDerivativeGain))
                 ackedSettings.YAxis.ProportionalGain = respPayload.NewProportionalGain
                 ackedSettings.YAxis.IntegralGain = respPayload.NewIntegralGain
                 ackedSettings.YAxis.DerivativeGain = respPayload.NewDerivativeGain
