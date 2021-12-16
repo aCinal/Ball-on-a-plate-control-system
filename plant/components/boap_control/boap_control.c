@@ -18,7 +18,6 @@
 #include <boap_stats.h>
 #include <esp_timer.h>
 #include <driver/mcpwm.h>
-#include <math.h>
 
 typedef struct SBoapControlStateContext {
     SBoapFilter * MovingAverageFilter;
@@ -30,11 +29,11 @@ typedef struct SBoapControlStateContext {
 #define BOAP_CONTROL_SAMPLING_PERIOD_DEFAULT                    0.05
 #define BOAP_CONTROL_GET_SAMPLE_NUMBER()                        ( s_timerOverflows / 2U )
 
-#define BOAP_CONTROL_SATURATION_THRESHOLD                       ( asin(1) / 3.0 )
+#define BOAP_CONTROL_SATURATION_THRESHOLD                       DEG_TO_RAD(30)
 #define BOAP_CONTROL_PROPORTIONAL_GAIN_DEFAULT                  0.0f
 #define BOAP_CONTROL_INTEGRAL_GAIN_DEFAULT                      0.0f
 #define BOAP_CONTROL_DERIVATIVE_GAIN_DEFAULT                    0.0f
-#define BOAP_CONTROL_FILTER_ORDER_DEFAULT                       1
+#define BOAP_CONTROL_FILTER_ORDER_DEFAULT                       5
 
 #define BOAP_CONTROL_SET_POINT_X_AXIS_MM_DEFAULT                0
 #define BOAP_CONTROL_SET_POINT_Y_AXIS_MM_DEFAULT                0
@@ -55,7 +54,7 @@ typedef struct SBoapControlStateContext {
 #define BOAP_CONTROL_PWM_PIN_Y_AXIS                             MACRO_EXPAND(BOAP_GPIO_NUM, BOAP_CONTROL_PWM_PIN_Y_AXIS_NUM)
 #define BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US                      500
 #define BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US                      2500
-#define BOAP_CONTROL_SERVO_MAX_ANGLE_RAD                        asin(1)
+#define BOAP_CONTROL_SERVO_MAX_ANGLE_DEG                        90
 
 PRIVATE EBoapAxis s_currentStateAxis = EBoapAxis_X;
 PRIVATE SBoapControlStateContext s_stateContexts[] = {
@@ -226,15 +225,17 @@ PUBLIC EBoapRet BoapControlInit(void) {
 
     IF_OK(status) {
 
-        BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating a servo object for the x-axis on pin %d...",
-            BOAP_CONTROL_PWM_PIN_X_AXIS);
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating a servo object for the x-axis on pin %d (duty: %d-%d, max angle: %d, offset: %d)...",
+            BOAP_CONTROL_PWM_PIN_X_AXIS, BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US, BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US, BOAP_CONTROL_SERVO_MAX_ANGLE_DEG,
+            BOAP_CONTROL_SERVO_X_AXIS_OFFSET_DEG);
 
         s_stateContexts[EBoapAxis_X].ServoObject = BoapServoCreate(BOAP_CONTROL_PWM_UNIT_X_AXIS,
                                                                    BOAP_CONTROL_PWM_PIN_X_AXIS,
                                                                    BOAP_CONTROL_PWM_FREQUENCY,
                                                                    BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US,
                                                                    BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US,
-                                                                   BOAP_CONTROL_SERVO_MAX_ANGLE_RAD);
+                                                                   DEG_TO_RAD(BOAP_CONTROL_SERVO_MAX_ANGLE_DEG),
+                                                                   DEG_TO_RAD(BOAP_CONTROL_SERVO_X_AXIS_OFFSET_DEG));
         if (unlikely(NULL == s_stateContexts[EBoapAxis_X].ServoObject)) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the servo object for the x-axis");
@@ -254,15 +255,17 @@ PUBLIC EBoapRet BoapControlInit(void) {
 
     IF_OK(status) {
 
-        BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating a servo object for the y-axis on pin %d...",
-            BOAP_CONTROL_PWM_PIN_Y_AXIS);
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating a servo object for the y-axis on pin %d (duty: %d-%d, max angle: %d, offset: %d)...",
+            BOAP_CONTROL_PWM_PIN_Y_AXIS, BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US, BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US, BOAP_CONTROL_SERVO_MAX_ANGLE_DEG,
+            BOAP_CONTROL_SERVO_Y_AXIS_OFFSET_DEG);
 
         s_stateContexts[EBoapAxis_Y].ServoObject = BoapServoCreate(BOAP_CONTROL_PWM_UNIT_Y_AXIS,
                                                                    BOAP_CONTROL_PWM_PIN_Y_AXIS,
                                                                    BOAP_CONTROL_PWM_FREQUENCY,
                                                                    BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US,
                                                                    BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US,
-                                                                   BOAP_CONTROL_SERVO_MAX_ANGLE_RAD);
+                                                                   DEG_TO_RAD(BOAP_CONTROL_SERVO_MAX_ANGLE_DEG),
+                                                                   DEG_TO_RAD(BOAP_CONTROL_SERVO_Y_AXIS_OFFSET_DEG));
         if (unlikely(NULL == s_stateContexts[EBoapAxis_Y].ServoObject)) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the servo object for the y-axis");

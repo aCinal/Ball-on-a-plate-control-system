@@ -67,7 +67,7 @@ PUBLIC r32 BoapFilterGetSample(SBoapFilter * handle, r32 inputSample) {
  * @param handle Filter handle
  * @return Filter order
  */
-u32 BoapFilterGetOrder(SBoapFilter * handle) {
+PUBLIC u32 BoapFilterGetOrder(SBoapFilter * handle) {
 
     return handle->FilterOrder;
 }
@@ -76,7 +76,7 @@ u32 BoapFilterGetOrder(SBoapFilter * handle) {
  * @brief Reset the internal state of the filter and clear the buffer
  * @param handle Filter handle
  */
-void BoapFilterReset(SBoapFilter * handle) {
+PUBLIC void BoapFilterReset(SBoapFilter * handle) {
 
     (void) memset(handle->RingBuffer, 0, handle->FilterOrder * sizeof(handle->RingBuffer[0]));
     handle->RingIndex = 0;

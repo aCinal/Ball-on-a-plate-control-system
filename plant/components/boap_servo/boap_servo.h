@@ -21,9 +21,10 @@ typedef struct SBoapServo SBoapServo;
  * @param minDutyUs Minimum PWM duty in microseconds
  * @param maxDutyUs Maximum PWM duty in microseconds
  * @param maxAngleInRadians Half the rotation range in radians
+ * @param offsetInRadians Constant offset in radians
  * @return Servo handle
  */
-SBoapServo * BoapServoCreate(mcpwm_unit_t pwmUnit, gpio_num_t pin, u32 frequency, u32 minDutyUs, u32 maxDutyUs, r32 maxAngleInRadians);
+SBoapServo * BoapServoCreate(mcpwm_unit_t pwmUnit, gpio_num_t pin, u32 frequency, u32 minDutyUs, u32 maxDutyUs, r32 maxAngleInRadians, r32 offsetInRadians);
 
 /**
  * @brief Set servo position

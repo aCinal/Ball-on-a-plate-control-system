@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <assert.h>
+#include <math.h>
 #include <esp_compiler.h>
 #include <driver/gpio.h>
 #include <freertos/FreeRTOS.h>
@@ -62,6 +63,8 @@ typedef enum EBoapAxis {
 #define R32_SECONDS_TO_U64_US(S)  ( (u64) ( (S) * 1000.0f * 1000.0f ) )
 #define MM_TO_M(MILLIM)           ( (r32) ( ( (r32)(MILLIM) ) / 1000.0f ) )
 #define M_TO_MM(METERS)           ( (r32) ( ( (r32)(METERS) ) * 1000.0f ) )
+#define RAD_TO_DEG(RAD)           ( (RAD) * 360.0 / (2.0 * M_PI) )
+#define DEG_TO_RAD(DEG)           ( (DEG) * 2.0 * M_PI / 360.0 )
 #define ZERO_IF_SAME_SIGN(x, y)   ( ( (x) * (y) ) <= 0.0f )
 #define MACRO_EVALUATE(x)         x
 #define MACRO_EXPAND(MACRO, ARG)  MACRO(ARG)
