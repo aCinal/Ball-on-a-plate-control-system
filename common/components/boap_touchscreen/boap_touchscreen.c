@@ -28,6 +28,8 @@ typedef struct SBoapTouchscreen {
         gpio_num_t OpenPin;
         r32 AdcToMmOffset;
         r32 AdcToMmSlope;
+        u16 AdcMin;
+        u16 AdcMax;
     } AxisContexts[2];
     SBoapTouchscreenReading LastReadings[2];
 } SBoapTouchscreen;
@@ -80,6 +82,11 @@ PUBLIC SBoapTouchscreen * BoapTouchscreenCreate(r32 xDim, r32 yDim,
         handle->AxisContexts[EBoapAxis_Y].GndPin = xOpen;
         handle->AxisContexts[EBoapAxis_X].OpenPin = xOpen;
         handle->AxisContexts[EBoapAxis_Y].OpenPin = xGnd;
+
+        handle->AxisContexts[EBoapAxis_X].AdcMax = xHighAdc;
+        handle->AxisContexts[EBoapAxis_X].AdcMin = xLowAdc;
+        handle->AxisContexts[EBoapAxis_Y].AdcMax = yHighAdc;
+        handle->AxisContexts[EBoapAxis_Y].AdcMin = yLowAdc;
 
         handle->Multisampling = multisampling;
 
@@ -155,7 +162,7 @@ PUBLIC SBoapTouchscreenReading * BoapTouchscreenRead(SBoapTouchscreen * handle, 
     measuredAdcValue = (u16)(runningSum / handle->Multisampling);
 
     /* Assert valid measurement */
-    if (likely(measuredAdcValue > 0)) {
+    if (likely(measuredAdcValue >= handle->AxisContexts[axis].AdcMin && measuredAdcValue <= handle->AxisContexts[axis].AdcMax)) {
 
         handle->LastReadings[axis].Position = (r32) measuredAdcValue * handle->AxisContexts[axis].AdcToMmSlope + handle->AxisContexts[axis].AdcToMmOffset;
         handle->LastReadings[axis].RawAdc = measuredAdcValue;
