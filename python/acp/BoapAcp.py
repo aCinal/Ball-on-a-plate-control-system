@@ -20,6 +20,7 @@ class BoapAcp:
         self.log = logger
         self.port = port
         self.baud = baud
+        self.writeLock = threading.Lock()
 
         # Open serial port
         self.serial = serial.Serial(port = self.port, baudrate = self.baud)
@@ -32,7 +33,9 @@ class BoapAcp:
         if msg.payload:
             serialMessage += bytearray(msg.payload.Serialize())
         # Call serial API
+        self.writeLock.acquire()
         self.serial.write(serialMessage)
+        self.writeLock.release()
 
     def MsgReceive(self):
         # Block on read (no timeout)
