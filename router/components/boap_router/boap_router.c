@@ -40,7 +40,7 @@ PRIVATE QueueHandle_t s_uartEventQueueHandle = NULL;
 PRIVATE EBoapRet BoapRouterUartInit(void);
 PRIVATE void BoapRouterDownlinkThreadEntryPoint(void * arg);
 PRIVATE void BoapRouterUplinkThreadEntryPoint(void * arg);
-PRIVATE void BoapRouterAcpMessageLoopback(void * message);
+PRIVATE void BoapRouterAcpMessageLoopback(SBoapAcpMsg * message);
 PRIVATE void BoapRouterLogCommitCallback(u32 len, const char * header, const char * payload, const char * trailer);
 
 /**
@@ -166,7 +166,7 @@ PRIVATE void BoapRouterDownlinkThreadEntryPoint(void * arg) {
     for ( ; /* ever */ ; ) {
 
         /* Wait for an ACP message */
-        void * message = BoapAcpMsgReceive(BOAP_ACP_WAIT_FOREVER);
+        SBoapAcpMsg * message = BoapAcpMsgReceive(BOAP_ACP_WAIT_FOREVER);
         /* Transmit the message to the PC */
         BoapRouterAcpMessageLoopback(message);
     }
@@ -175,7 +175,7 @@ PRIVATE void BoapRouterDownlinkThreadEntryPoint(void * arg) {
 PRIVATE void BoapRouterUplinkThreadEntryPoint(void * arg) {
 
     u8 localBuffer[BOAP_ROUTER_UART_LOCAL_BUFFER_SIZE];
-    void * message;
+    SBoapAcpMsg * message;
 
     (void) arg;
 
@@ -193,7 +193,7 @@ PRIVATE void BoapRouterUplinkThreadEntryPoint(void * arg) {
 
             (void) uart_read_bytes(BOAP_ROUTER_UART_NUM, localBuffer, event.size, portMAX_DELAY);
             /* Interpret the data as an ACP datagram and create a copy on the heap */
-            message = BoapAcpMsgCreateCopy((void *) localBuffer);
+            message = BoapAcpMsgCreateCopy((SBoapAcpMsg *) localBuffer);
             if (likely(NULL != message)) {
 
                 /* Send the message */
@@ -209,7 +209,7 @@ PRIVATE void BoapRouterUplinkThreadEntryPoint(void * arg) {
     }
 }
 
-PRIVATE void BoapRouterAcpMessageLoopback(void * message) {
+PRIVATE void BoapRouterAcpMessageLoopback(SBoapAcpMsg * message) {
 
     /* Forward the message via UART */
     (void) uart_write_bytes(BOAP_ROUTER_UART_NUM, message, BoapAcpMsgGetBulkSize(message));
@@ -220,7 +220,7 @@ PRIVATE void BoapRouterAcpMessageLoopback(void * message) {
 PRIVATE void BoapRouterLogCommitCallback(u32 len, const char * header, const char * payload, const char * trailer) {
 
     /* Wrap the log entry in an ACP message */
-    void * message = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_PC, BOAP_ACP_LOG_COMMIT, sizeof(SBoapAcpLogCommit));
+    SBoapAcpMsg * message = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_PC, BOAP_ACP_LOG_COMMIT, sizeof(SBoapAcpLogCommit));
     if (likely(NULL != message)) {
 
         SBoapAcpLogCommit * msgPayload = (SBoapAcpLogCommit *) BoapAcpMsgGetPayload(message);

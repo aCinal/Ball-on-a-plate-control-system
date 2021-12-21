@@ -81,15 +81,15 @@ PRIVATE void BoapControlTimerCallback(void * arg);
 PRIVATE void BoapControlStateTransition(void);
 PRIVATE void BoapControlSetNewSamplingPeriod(r32 samplingPeriod);
 PRIVATE void BoapControlTraceBallPosition(r32 xSetpoint, r32 xPosition, r32 ySetpoint, r32 yPosition);
-PRIVATE void BoapControlHandlePingReq(void * request);
-PRIVATE void BoapControlHandleBallTraceEnable(void * request);
-PRIVATE void BoapControlHandleNewSetpointReq(void * request);
-PRIVATE void BoapControlHandleGetPidSettingsReq(void * request);
-PRIVATE void BoapControlHandleSetPidSettingsReq(void * request);
-PRIVATE void BoapControlHandleGetSamplingPeriodReq(void * request);
-PRIVATE void BoapControlHandleSetSamplingPeriodReq(void * request);
-PRIVATE void BoapControlHandleGetFilterOrderReq(void * request);
-PRIVATE void BoapControlHandleSetFilterOrderReq(void * request);
+PRIVATE void BoapControlHandlePingReq(SBoapAcpMsg * request);
+PRIVATE void BoapControlHandleBallTraceEnable(SBoapAcpMsg * request);
+PRIVATE void BoapControlHandleNewSetpointReq(SBoapAcpMsg * request);
+PRIVATE void BoapControlHandleGetPidSettingsReq(SBoapAcpMsg * request);
+PRIVATE void BoapControlHandleSetPidSettingsReq(SBoapAcpMsg * request);
+PRIVATE void BoapControlHandleGetSamplingPeriodReq(SBoapAcpMsg * request);
+PRIVATE void BoapControlHandleSetSamplingPeriodReq(SBoapAcpMsg * request);
+PRIVATE void BoapControlHandleGetFilterOrderReq(SBoapAcpMsg * request);
+PRIVATE void BoapControlHandleSetFilterOrderReq(SBoapAcpMsg * request);
 
 /**
  * @brief Initialize the ball-on-a-plate control service
@@ -400,9 +400,9 @@ PRIVATE void BoapControlHandleTimerExpired(SBoapEvent * event) {
     /* State transition */
     BoapControlStateTransition();
 
+    MEMORY_BARRIER();
     /* Mark exit out of the event handler */
     s_inHandlerMarker = false;
-    MEMORY_BARRIER();
 }
 
 PRIVATE void BoapControlSetNewSamplingPeriod(r32 samplingPeriod) {
@@ -413,7 +413,7 @@ PRIVATE void BoapControlSetNewSamplingPeriod(r32 samplingPeriod) {
 
 PRIVATE void BoapControlHandleAcpMessage(SBoapEvent * event) {
 
-    void * message = event->payload;
+    SBoapAcpMsg * message = event->payload;
 
     switch (BoapAcpMsgGetId(message)) {
 
@@ -498,7 +498,7 @@ PRIVATE void BoapControlStateTransition(void) {
 PRIVATE void BoapControlTraceBallPosition(r32 xSetpoint, r32 xPosition, r32 ySetpoint, r32 yPosition) {
 
     /* Send the trace indication message */
-    void * message = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_PC, BOAP_ACP_BALL_TRACE_IND, sizeof(SBoapAcpBallTraceInd));
+    SBoapAcpMsg * message = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_PC, BOAP_ACP_BALL_TRACE_IND, sizeof(SBoapAcpBallTraceInd));
     if (likely(NULL != message)) {
 
         SBoapAcpBallTraceInd * payload = (SBoapAcpBallTraceInd *) BoapAcpMsgGetPayload(message);
@@ -511,10 +511,10 @@ PRIVATE void BoapControlTraceBallPosition(r32 xSetpoint, r32 xPosition, r32 ySet
     }
 }
 
-PRIVATE void BoapControlHandlePingReq(void * request) {
+PRIVATE void BoapControlHandlePingReq(SBoapAcpMsg * request) {
 
     /* Send the response message */
-    void * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_PING_RESP, 0);
+    SBoapAcpMsg * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_PING_RESP, 0);
     if (likely(NULL != response)) {
 
         BoapLogPrint(EBoapLogSeverityLevel_Debug, "Responding to ping request from 0x%02X...", BoapAcpMsgGetSender(request));
@@ -529,7 +529,7 @@ PRIVATE void BoapControlHandlePingReq(void * request) {
     BoapAcpMsgDestroy(request);
 }
 
-PRIVATE void BoapControlHandleBallTraceEnable(void * request) {
+PRIVATE void BoapControlHandleBallTraceEnable(SBoapAcpMsg * request) {
 
     SBoapAcpBallTraceEnable * reqPayload = (SBoapAcpBallTraceEnable *) BoapAcpMsgGetPayload(request);
 
@@ -546,7 +546,7 @@ PRIVATE void BoapControlHandleBallTraceEnable(void * request) {
     BoapApcMsgEcho(request);
 }
 
-PRIVATE void BoapControlHandleNewSetpointReq(void * request) {
+PRIVATE void BoapControlHandleNewSetpointReq(SBoapAcpMsg * request) {
 
     SBoapAcpNewSetpointReq * reqPayload = (SBoapAcpNewSetpointReq *) BoapAcpMsgGetPayload(request);
 
@@ -558,10 +558,10 @@ PRIVATE void BoapControlHandleNewSetpointReq(void * request) {
     BoapAcpMsgDestroy(request);
 }
 
-PRIVATE void BoapControlHandleGetPidSettingsReq(void * request) {
+PRIVATE void BoapControlHandleGetPidSettingsReq(SBoapAcpMsg * request) {
 
     /* Send the response message */
-    void * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_GET_PID_SETTINGS_RESP, sizeof(SBoapAcpGetPidSettingsResp));
+    SBoapAcpMsg * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_GET_PID_SETTINGS_RESP, sizeof(SBoapAcpGetPidSettingsResp));
     if (likely(NULL != response)) {
 
         SBoapAcpGetPidSettingsReq * reqPayload = (SBoapAcpGetPidSettingsReq *) BoapAcpMsgGetPayload(request);
@@ -581,7 +581,7 @@ PRIVATE void BoapControlHandleGetPidSettingsReq(void * request) {
     BoapAcpMsgDestroy(request);
 }
 
-PRIVATE void BoapControlHandleSetPidSettingsReq(void * request) {
+PRIVATE void BoapControlHandleSetPidSettingsReq(SBoapAcpMsg * request) {
 
     SBoapAcpSetPidSettingsReq * reqPayload = (SBoapAcpSetPidSettingsReq *) BoapAcpMsgGetPayload(request);
 
@@ -595,7 +595,7 @@ PRIVATE void BoapControlHandleSetPidSettingsReq(void * request) {
         reqPayload->ProportionalGain, reqPayload->IntegralGain, reqPayload->DerivativeGain);
 
     /* Send the response message */
-    void * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_SET_PID_SETTINGS_RESP, sizeof(SBoapAcpSetPidSettingsResp));
+    SBoapAcpMsg * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_SET_PID_SETTINGS_RESP, sizeof(SBoapAcpSetPidSettingsResp));
     if (likely(NULL != response)) {
 
         SBoapAcpSetPidSettingsResp * respPayload = (SBoapAcpSetPidSettingsResp *) BoapAcpMsgGetPayload(response);
@@ -617,10 +617,10 @@ PRIVATE void BoapControlHandleSetPidSettingsReq(void * request) {
     BoapAcpMsgDestroy(request);
 }
 
-PRIVATE void BoapControlHandleGetSamplingPeriodReq(void * request) {
+PRIVATE void BoapControlHandleGetSamplingPeriodReq(SBoapAcpMsg * request) {
 
     /* Send the response message */
-    void * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_GET_SAMPLING_PERIOD_RESP, sizeof(SBoapAcpGetSamplingPeriodResp));
+    SBoapAcpMsg * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_GET_SAMPLING_PERIOD_RESP, sizeof(SBoapAcpGetSamplingPeriodResp));
     if (likely(NULL != response)) {
 
         SBoapAcpGetSamplingPeriodResp * respPayload = (SBoapAcpGetSamplingPeriodResp *) BoapAcpMsgGetPayload(response);
@@ -632,7 +632,7 @@ PRIVATE void BoapControlHandleGetSamplingPeriodReq(void * request) {
     BoapAcpMsgDestroy(request);
 }
 
-PRIVATE void BoapControlHandleSetSamplingPeriodReq(void * request) {
+PRIVATE void BoapControlHandleSetSamplingPeriodReq(SBoapAcpMsg * request) {
 
     SBoapAcpSetSamplingPeriodReq * reqPayload = (SBoapAcpSetSamplingPeriodReq *) BoapAcpMsgGetPayload(request);
 
@@ -646,16 +646,16 @@ PRIVATE void BoapControlHandleSetSamplingPeriodReq(void * request) {
     BoapPidSetSamplingPeriod(s_stateContexts[EBoapAxis_X].PidRegulator, reqPayload->SamplingPeriod);
     BoapPidSetSamplingPeriod(s_stateContexts[EBoapAxis_Y].PidRegulator, reqPayload->SamplingPeriod);
 
+    /* Store the new sampling period */
+    BoapControlSetNewSamplingPeriod(reqPayload->SamplingPeriod);
+
     /* Rearm the timer with the new period */
     (void) esp_timer_start_periodic(s_timerHandle, newTimerPeriod);
 
     BoapLogPrint(EBoapLogSeverityLevel_Info, "Sampling period changed from %f to %f", oldSamplingPeriod, reqPayload->SamplingPeriod);
 
-    /* Store the new sampling period */
-    BoapControlSetNewSamplingPeriod(reqPayload->SamplingPeriod);
-
     /* Send the response message */
-    void * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_SET_SAMPLING_PERIOD_RESP, sizeof(SBoapAcpSetSamplingPeriodResp));
+    SBoapAcpMsg * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_SET_SAMPLING_PERIOD_RESP, sizeof(SBoapAcpSetSamplingPeriodResp));
     if (likely(NULL != response)) {
 
         SBoapAcpSetSamplingPeriodResp * respPayload = (SBoapAcpSetSamplingPeriodResp *) BoapAcpMsgGetPayload(response);
@@ -672,12 +672,12 @@ PRIVATE void BoapControlHandleSetSamplingPeriodReq(void * request) {
     BoapAcpMsgDestroy(request);
 }
 
-PRIVATE void BoapControlHandleGetFilterOrderReq(void * request) {
+PRIVATE void BoapControlHandleGetFilterOrderReq(SBoapAcpMsg * request) {
 
     SBoapAcpGetFilterOrderReq * reqPayload = (SBoapAcpGetFilterOrderReq *) BoapAcpMsgGetPayload(request);
 
     /* Send the response message */
-    void * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_GET_FILTER_ORDER_RESP, sizeof(SBoapAcpGetFilterOrderResp));
+    SBoapAcpMsg * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_GET_FILTER_ORDER_RESP, sizeof(SBoapAcpGetFilterOrderResp));
     if (likely(NULL != response)) {
 
         SBoapAcpGetFilterOrderResp * respPayload = (SBoapAcpGetFilterOrderResp *) BoapAcpMsgGetPayload(response);
@@ -690,7 +690,7 @@ PRIVATE void BoapControlHandleGetFilterOrderReq(void * request) {
     BoapAcpMsgDestroy(request);
 }
 
-PRIVATE void BoapControlHandleSetFilterOrderReq(void * request) {
+PRIVATE void BoapControlHandleSetFilterOrderReq(SBoapAcpMsg * request) {
 
     SBoapAcpSetFilterOrderReq * reqPayload = (SBoapAcpSetFilterOrderReq *) BoapAcpMsgGetPayload(request);
 
@@ -718,7 +718,7 @@ PRIVATE void BoapControlHandleSetFilterOrderReq(void * request) {
     }
 
     /* Send the response message */
-    void * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_SET_FILTER_ORDER_RESP, sizeof(SBoapAcpSetFilterOrderResp));
+    SBoapAcpMsg * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_SET_FILTER_ORDER_RESP, sizeof(SBoapAcpSetFilterOrderResp));
     if (likely(NULL != response)) {
 
         SBoapAcpSetFilterOrderResp * respPayload = (SBoapAcpSetFilterOrderResp *) BoapAcpMsgGetPayload(response);

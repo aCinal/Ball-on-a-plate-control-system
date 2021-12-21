@@ -146,7 +146,7 @@ PUBLIC EBoapRet BoapControllerInit(void) {
 PRIVATE void BoapControllerLogCommitCallback(u32 len, const char * header, const char * payload, const char * trailer) {
 
     /* Wrap the log entry in an ACP message */
-    void * message = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_PC, BOAP_ACP_LOG_COMMIT, sizeof(SBoapAcpLogCommit));
+    SBoapAcpMsg * message = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_PC, BOAP_ACP_LOG_COMMIT, sizeof(SBoapAcpLogCommit));
     if (likely(NULL != message)) {
 
         SBoapAcpLogCommit * msgPayload = (SBoapAcpLogCommit *) BoapAcpMsgGetPayload(message);
@@ -164,8 +164,8 @@ PRIVATE void BoapControllerMessageHandlerThreadEntryPoint(void * arg) {
     for ( ; /* ever */ ; ) {
 
         /* Listen for incoming requests */
-        void * request = BoapAcpMsgReceive(BOAP_ACP_WAIT_FOREVER);
-        void * response;
+        SBoapAcpMsg * request = BoapAcpMsgReceive(BOAP_ACP_WAIT_FOREVER);
+        SBoapAcpMsg * response;
 
         /* Respond to ping requests and ignore all other messages */
         switch (BoapAcpMsgGetId(request)) {
@@ -199,7 +199,7 @@ PRIVATE void BoapControllerTimerCallback(void * arg) {
     if (NULL != xReading && NULL != yReading) {
 
         /* If both axes register valid inputs, send new setpoint request to the plant */
-        void * newSetpointRequest = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_PLANT, BOAP_ACP_NEW_SETPOINT_REQ, sizeof(SBoapAcpNewSetpointReq));
+        SBoapAcpMsg * newSetpointRequest = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_PLANT, BOAP_ACP_NEW_SETPOINT_REQ, sizeof(SBoapAcpNewSetpointReq));
         if (likely(NULL != newSetpointRequest)) {
 
             SBoapAcpNewSetpointReq * payload = BoapAcpMsgGetPayload(newSetpointRequest);

@@ -57,7 +57,7 @@ PRIVATE void BoapListenerThreadEntryPoint(void * arg) {
     for ( ; /* ever */ ; ) {
 
         /* Receive an ACP message */
-        void * message = BoapAcpMsgReceive(BOAP_ACP_WAIT_FOREVER);
+        SBoapAcpMsg * message = BoapAcpMsgReceive(BOAP_ACP_WAIT_FOREVER);
 
         /* Forward the message to the dispatcher */
         if (EBoapRet_Ok != BoapEventSend(EBoapEvent_AcpMessagePending, message)) {

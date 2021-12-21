@@ -18,7 +18,7 @@
 #define BOAP_TOUCHSCREEN_BUSY_WAIT_THRESHOLD           500
 #define BOAP_TOUCHSCREEN_BUSY_WAIT_FOR_STEADY_STATE()  for (int i = 0; i < BOAP_TOUCHSCREEN_BUSY_WAIT_THRESHOLD; i++) { ; }
 
-typedef struct SBoapTouchscreen {
+struct SBoapTouchscreen {
     u32 Multisampling;
     struct {
         adc_channel_t AdcChannel;
@@ -32,7 +32,7 @@ typedef struct SBoapTouchscreen {
         u16 AdcMax;
     } AxisContexts[2];
     SBoapTouchscreenReading LastReadings[2];
-} SBoapTouchscreen;
+};
 
 /**
  * @brief Create a touchscreen object instance

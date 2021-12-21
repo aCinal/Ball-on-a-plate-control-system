@@ -9,7 +9,7 @@
 #include <boap_mem.h>
 #include <stddef.h>
 
-typedef struct SBoapPid {
+struct SBoapPid {
     /* Settings */
     r32 SetPoint;
     r32 ProportionalGain;
@@ -24,7 +24,7 @@ typedef struct SBoapPid {
     r32 RunningSum;
     r32 PreviousOutputUnbounded;
     r32 PreviousOutputBounded;
-} SBoapPid;
+};
 
 /**
  * @brief Instantiate a PID regulator

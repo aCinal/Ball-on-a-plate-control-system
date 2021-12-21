@@ -9,12 +9,12 @@
 #include <boap_mem.h>
 #include <string.h>
 
-typedef struct SBoapFilter {
+struct SBoapFilter {
 	u32 FilterOrder;
 	u32 RingIndex;
 	r32 PreviousAverage;
 	r32 RingBuffer[0];
-} SBoapFilter;
+};
 
 #define BOAP_FILTER_HANDLE_SIZE(FILTER_ORDER)     ( sizeof(SBoapFilter) + (FILTER_ORDER) * sizeof(r32) )
 

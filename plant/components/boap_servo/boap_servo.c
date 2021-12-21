@@ -10,12 +10,12 @@
 #include <driver/mcpwm.h>
 #include <driver/gpio.h>
 
-typedef struct SBoapServo {
+struct SBoapServo {
     mcpwm_unit_t PwmUnit;
     gpio_num_t Pin;
     r32 AngleToDutySlope;
     u32 AngleToDutyOffset;
-} SBoapServo;
+};
 
 /**
  * @brief Create a servo object

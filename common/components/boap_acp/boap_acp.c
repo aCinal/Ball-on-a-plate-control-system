@@ -37,10 +37,10 @@ typedef struct SBoapAcpHeader {
     TBoapAcpPayloadSize payloadSize;
 } SBoapAcpHeader;
 
-typedef struct SBoapAcpMsg {
+struct SBoapAcpMsg {
     SBoapAcpHeader header;
     u8 payload[0];
-} SBoapAcpMsg;
+};
 
 PRIVATE const u8 s_macAddrLookupTable[][ESP_NOW_ETH_ALEN] = {
     [BOAP_ACP_NODE_ID_PLANT] = BOAP_ACP_NODE_MAC_ADDR_PLANT,
@@ -223,7 +223,7 @@ PUBLIC TBoapAcpNodeId BoapAcpGetOwnNodeId(void) {
  * @param payloadSize Size of the message payload
  * @return Message handle
  */
-PUBLIC void * BoapAcpMsgCreate(TBoapAcpNodeId receiver, TBoapAcpMsgId msgId, TBoapAcpPayloadSize payloadSize) {
+PUBLIC SBoapAcpMsg * BoapAcpMsgCreate(TBoapAcpNodeId receiver, TBoapAcpMsgId msgId, TBoapAcpPayloadSize payloadSize) {
 
     SBoapAcpMsg * message = NULL;
 
@@ -247,15 +247,15 @@ PUBLIC void * BoapAcpMsgCreate(TBoapAcpNodeId receiver, TBoapAcpMsgId msgId, TBo
  * @param msg Original message handle
  * @return Copy handle
  */
-void * BoapAcpMsgCreateCopy(const void * msg) {
+SBoapAcpMsg * BoapAcpMsgCreateCopy(const SBoapAcpMsg * msg) {
 
-    void * copy = BoapAcpMsgCreate(BoapAcpMsgGetReceiver(msg), BoapAcpMsgGetId(msg), BoapAcpMsgGetPayloadSize(msg));
+    SBoapAcpMsg * copy = BoapAcpMsgCreate(BoapAcpMsgGetReceiver(msg), BoapAcpMsgGetId(msg), BoapAcpMsgGetPayloadSize(msg));
 
     if (likely(NULL != copy)) {
 
         /* Copy the payload */
-        void * src = BoapAcpMsgGetPayload(msg);
-        void * dst = BoapAcpMsgGetPayload(copy);
+        const void * src = msg->payload;
+        void * dst = copy->payload;
         (void) memcpy(dst, src, BoapAcpMsgGetPayloadSize(copy));
     }
 
@@ -267,9 +267,9 @@ void * BoapAcpMsgCreateCopy(const void * msg) {
  * @param msg Message handle
  * @return Pointer to the beginning of the message payload
  */
-PUBLIC void * BoapAcpMsgGetPayload(const void * msg) {
+PUBLIC void * BoapAcpMsgGetPayload(SBoapAcpMsg * msg) {
 
-    return ((SBoapAcpMsg *) msg)->payload;
+    return msg->payload;
 }
 
 /**
@@ -277,9 +277,9 @@ PUBLIC void * BoapAcpMsgGetPayload(const void * msg) {
  * @param msg Message handle
  * @return Payload size
  */
-PUBLIC TBoapAcpPayloadSize BoapAcpMsgGetPayloadSize(const void * msg) {
+PUBLIC TBoapAcpPayloadSize BoapAcpMsgGetPayloadSize(const SBoapAcpMsg * msg) {
 
-    return ((SBoapAcpMsg *) msg)->header.payloadSize;
+    return msg->header.payloadSize;
 }
 
 /**
@@ -287,7 +287,7 @@ PUBLIC TBoapAcpPayloadSize BoapAcpMsgGetPayloadSize(const void * msg) {
  * @param msg Message handle
  * @return Bulk size
  */
-PUBLIC u32 BoapAcpMsgGetBulkSize(const void * msg) {
+PUBLIC u32 BoapAcpMsgGetBulkSize(const SBoapAcpMsg * msg) {
 
     return sizeof(SBoapAcpHeader) + (u32) BoapAcpMsgGetPayloadSize(msg);
 }
@@ -297,9 +297,9 @@ PUBLIC u32 BoapAcpMsgGetBulkSize(const void * msg) {
  * @param msg Message handle
  * @return Message ID
  */
-PUBLIC TBoapAcpMsgId BoapAcpMsgGetId(const void * msg) {
+PUBLIC TBoapAcpMsgId BoapAcpMsgGetId(const SBoapAcpMsg * msg) {
 
-    return ((SBoapAcpMsg *) msg)->header.msgId;
+    return msg->header.msgId;
 }
 
 /**
@@ -307,9 +307,9 @@ PUBLIC TBoapAcpMsgId BoapAcpMsgGetId(const void * msg) {
  * @param msg Message handle
  * @return Sender node ID
  */
-PUBLIC TBoapAcpNodeId BoapAcpMsgGetSender(const void * msg) {
+PUBLIC TBoapAcpNodeId BoapAcpMsgGetSender(const SBoapAcpMsg * msg) {
 
-    return ((SBoapAcpMsg *) msg)->header.sender;
+    return msg->header.sender;
 }
 
 /**
@@ -317,16 +317,16 @@ PUBLIC TBoapAcpNodeId BoapAcpMsgGetSender(const void * msg) {
  * @param msg Message handle
  * @return Receiver node ID
  */
-PUBLIC TBoapAcpNodeId BoapAcpMsgGetReceiver(const void * msg) {
+PUBLIC TBoapAcpNodeId BoapAcpMsgGetReceiver(const SBoapAcpMsg * msg) {
 
-    return ((SBoapAcpMsg *) msg)->header.receiver;
+    return msg->header.receiver;
 }
 
 /**
  * @brief Send an ACP message
  * @param msg Message handle
  */
-PUBLIC void BoapAcpMsgSend(void * msg) {
+PUBLIC void BoapAcpMsgSend(SBoapAcpMsg * msg) {
 
     /* Send the message to the gateway thread */
     if (unlikely(pdPASS != xQueueSend(s_txQueueHandle, &msg, 0))) {
@@ -344,9 +344,9 @@ PUBLIC void BoapAcpMsgSend(void * msg) {
  * @param timeout Timeout in milliseconds
  * @return Message handle
  */
-PUBLIC void * BoapAcpMsgReceive(u32 timeout) {
+PUBLIC SBoapAcpMsg * BoapAcpMsgReceive(u32 timeout) {
 
-    void * msg = NULL;
+    SBoapAcpMsg * msg = NULL;
     /* Wait on the receive queue */
     (void) xQueueReceive(s_rxQueueHandle, &msg, (BOAP_ACP_WAIT_FOREVER == timeout) ? portMAX_DELAY : pdMS_TO_TICKS(timeout));
 
@@ -359,7 +359,7 @@ PUBLIC void * BoapAcpMsgReceive(u32 timeout) {
  * @brief Destroy an ACP message
  * @param msg Message handle
  */
-PUBLIC void BoapAcpMsgDestroy(void * msg) {
+PUBLIC void BoapAcpMsgDestroy(SBoapAcpMsg * msg) {
 
     BoapMemUnref(msg);
 }
@@ -368,12 +368,12 @@ PUBLIC void BoapAcpMsgDestroy(void * msg) {
  * @brief Echo the message back to sender
  * @param msg Message handle
  */
-PUBLIC void BoapApcMsgEcho(void * msg) {
+PUBLIC void BoapApcMsgEcho(SBoapAcpMsg * msg) {
 
     /* Swap sender and receiver */
     TBoapAcpNodeId swap = BoapAcpMsgGetReceiver(msg);
-    ((SBoapAcpMsg*) msg)->header.receiver = BoapAcpMsgGetSender(msg);
-    ((SBoapAcpMsg*) msg)->header.sender = swap;
+    msg->header.receiver = BoapAcpMsgGetSender(msg);
+    msg->header.sender = swap;
     /* Send the message */
     BoapAcpMsgSend(msg);
 }
@@ -573,7 +573,7 @@ PRIVATE void BoapAcpEspNowDeinit(void) {
 PRIVATE void BoapAcpEspNowReceiveCallback(const u8 * macAddr, const u8 * data, i32 dataLen) {
 
     EBoapRet status = EBoapRet_Ok;
-    void * msg = NULL;
+    SBoapAcpMsg * msg = NULL;
 
     /* Assert it is safe to access the ACP header */
     if (unlikely(dataLen < sizeof(SBoapAcpHeader))) {
@@ -584,7 +584,7 @@ PRIVATE void BoapAcpEspNowReceiveCallback(const u8 * macAddr, const u8 * data, i
     IF_OK(status) {
 
         /* Assert correct message size */
-        i32 declaredSize = (i32)(sizeof(SBoapAcpHeader) + BoapAcpMsgGetPayloadSize(data));
+        i32 declaredSize = (i32)(sizeof(SBoapAcpHeader) + BoapAcpMsgGetPayloadSize((SBoapAcpMsg *) data));
         if (unlikely(dataLen != declaredSize)) {
 
             status = EBoapRet_Error;
@@ -594,7 +594,7 @@ PRIVATE void BoapAcpEspNowReceiveCallback(const u8 * macAddr, const u8 * data, i
     IF_OK(status) {
 
         /* Assert valid receiver */
-        if (unlikely(BoapAcpMsgGetReceiver(data) != s_ownNodeId)) {
+        if (unlikely(BoapAcpMsgGetReceiver((SBoapAcpMsg *) data) != s_ownNodeId)) {
 
             status = EBoapRet_Error;
         }
@@ -609,7 +609,7 @@ PRIVATE void BoapAcpEspNowReceiveCallback(const u8 * macAddr, const u8 * data, i
 
             if (NULL != s_rxMessageDroppedHook) {
 
-                s_rxMessageDroppedHook(BoapAcpMsgGetSender(data), EBoapAcpRxMessageDroppedReason_AllocationFailure);
+                s_rxMessageDroppedHook(BoapAcpMsgGetSender((SBoapAcpMsg *) data), EBoapAcpRxMessageDroppedReason_AllocationFailure);
             }
             status = EBoapRet_Error;
         }

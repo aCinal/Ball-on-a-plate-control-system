@@ -9,6 +9,8 @@
 
 #include <boap_common.h>
 
+typedef struct SBoapAcpMsg SBoapAcpMsg;
+
 typedef u8 TBoapAcpNodeId;
 typedef u8 TBoapAcpPayloadSize;
 typedef u8 TBoapAcpMsgId;
@@ -27,7 +29,7 @@ typedef enum EBoapAcpRxMessageDroppedReason {
 
 typedef void (* TBoapAcpTxMessageDroppedHook)(TBoapAcpNodeId receiver, EBoapAcpTxMessageDroppedReason reason);
 typedef void (* TBoapAcpRxMessageDroppedHook)(TBoapAcpNodeId sender, EBoapAcpRxMessageDroppedReason reason);
-typedef void (* TBoapAcpTraceCallback)(void * msg);
+typedef void (* TBoapAcpTraceCallback)(SBoapAcpMsg * msg);
 
 #define BOAP_ACP_MSG_ID_INVALID      ( (TBoapAcpMsgId) 0xFF )
 
@@ -59,81 +61,81 @@ TBoapAcpNodeId BoapAcpGetOwnNodeId(void);
  * @param payloadSize Size of the message payload
  * @return Message handle
  */
-void * BoapAcpMsgCreate(TBoapAcpNodeId receiver, TBoapAcpMsgId msgId, TBoapAcpPayloadSize payloadSize);
+SBoapAcpMsg * BoapAcpMsgCreate(TBoapAcpNodeId receiver, TBoapAcpMsgId msgId, TBoapAcpPayloadSize payloadSize);
 
 /**
  * @brief Create a copy of an existing ACP message
  * @param msg Original message handle
  * @return Copy handle
  */
-void * BoapAcpMsgCreateCopy(const void * msg);
+SBoapAcpMsg * BoapAcpMsgCreateCopy(const SBoapAcpMsg * msg);
 
 /**
  * @brief Get the message payload
  * @param msg Message handle
  * @return Pointer to the beginning of the message payload
  */
-void * BoapAcpMsgGetPayload(const void * msg);
+void * BoapAcpMsgGetPayload(SBoapAcpMsg * msg);
 
 /**
  * @brief Get the message payload size
  * @param msg Message handle
  * @return Payload size
  */
-TBoapAcpPayloadSize BoapAcpMsgGetPayloadSize(const void * msg);
+TBoapAcpPayloadSize BoapAcpMsgGetPayloadSize(const SBoapAcpMsg * msg);
 
 /**
  * @brief Get the message bulk size
  * @param msg Message handle
  * @return Bulk size
  */
-u32 BoapAcpMsgGetBulkSize(const void * msg);
+u32 BoapAcpMsgGetBulkSize(const SBoapAcpMsg * msg);
 
 /**
  * @brief Get the message ID
  * @param msg Message handle
  * @return Message ID
  */
-TBoapAcpMsgId BoapAcpMsgGetId(const void * msg);
+TBoapAcpMsgId BoapAcpMsgGetId(const SBoapAcpMsg * msg);
 
 /**
  * @brief Get the sender node ID
  * @param msg Message handle
  * @return Sender node ID
  */
-TBoapAcpNodeId BoapAcpMsgGetSender(const void * msg);
+TBoapAcpNodeId BoapAcpMsgGetSender(const SBoapAcpMsg * msg);
 
 /**
  * @brief Get the receiver node ID
  * @param msg Message handle
  * @return Receiver node ID
  */
-TBoapAcpNodeId BoapAcpMsgGetReceiver(const void * msg);
+TBoapAcpNodeId BoapAcpMsgGetReceiver(const SBoapAcpMsg * msg);
 
 /**
  * @brief Send an ACP message
  * @param msg Message handle
  */
-void BoapAcpMsgSend(void * msg);
+void BoapAcpMsgSend(SBoapAcpMsg * msg);
 
 /**
  * @brief Receive an ACP message addressed to this node
  * @param timeout Timeout in milliseconds
  * @return Message handle
  */
-void * BoapAcpMsgReceive(u32 timeout);
+SBoapAcpMsg * BoapAcpMsgReceive(u32 timeout);
 
 /**
  * @brief Destroy an ACP message
  * @param msg Message handle
  */
-void BoapAcpMsgDestroy(void * msg);
+void BoapAcpMsgDestroy(SBoapAcpMsg * msg);
 
 /**
  * @brief Echo the message back to sender
  * @param msg Message handle
  */
-void BoapApcMsgEcho(void * msg);
+void BoapApcMsgEcho(SBoapAcpMsg * msg);
 
 /**
  * @brief Register a hook to be called on TX message dropped event
