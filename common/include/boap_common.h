@@ -68,7 +68,8 @@ typedef enum EBoapAxis {
 #define ZERO_IF_SAME_SIGN(x, y)   ( ( (x) * (y) ) <= 0.0f )
 #define MACRO_EVALUATE(x)         x
 #define MACRO_EXPAND(MACRO, ARG)  MACRO(ARG)
-#define BOAP_AXIS_NAME(axis)      ( (axis) == EBoapAxis_X ? "X-axis" : "Y-axis" )
+#define BOAP_AXIS_NAME(axis)      ( EBoapAxis_X == (axis) ? "X-axis" : "Y-axis" )
+#define BOAP_AXIS_VALID(axis)     ( EBoapAxis_X == (axis) || EBoapAxis_Y == (axis) )
 #define BOAP_GPIO_NUM(GPIO_NUM)   GPIO_NUM_##GPIO_NUM
 #define MEMORY_BARRIER()          __sync_synchronize()
 

@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file touchscreen_tuner.c
  * @author Adrian Cinal
  * @brief File providing the entry point for the application
  */

@@ -37,7 +37,7 @@ void BoapLogRegisterMessageTruncationHook(TBoapLogMessageTruncationHook hook);
  * @param format Format string
  * @param ... (optional) Variadic number of format arguments
  */
-void BoapLogPrint(EBoapLogSeverityLevel severityLevel, const char * format, ...);
+void BoapLogPrint(EBoapLogSeverityLevel severityLevel, const char * format, ...) __attribute__((format(printf, 2, 3)));
 
 /**
  * @brief Set severity level threshold

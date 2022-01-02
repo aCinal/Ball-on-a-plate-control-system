@@ -342,7 +342,7 @@ PRIVATE void BoapControlHandleTimerExpired(SBoapEvent * event) {
     static r32 xSetpointMm = 0.0f;
 
     /* Mark entry into the event handler */
-    s_inHandlerMarker = true;
+    s_inHandlerMarker = EBoapBool_BoolTrue;
     MEMORY_BARRIER();
 
     /* Run the ADC conversion */
@@ -382,15 +382,14 @@ PRIVATE void BoapControlHandleTimerExpired(SBoapEvent * event) {
 
         /* Branchless assign, it is ok to overwrite the X-axis data once the trace message is sent */
         xPositionFilteredMm = filteredPositionMm;
-        xPositionAsserted = true;
+        xPositionAsserted = EBoapBool_BoolTrue;
         xSetpointMm = M_TO_MM(BoapPidGetSetpoint(s_stateContexts[EBoapAxis_X].PidRegulator));
 
     } else {  /* Actual no touch condition */
 
-        if (EBoapAxis_X == s_currentStateAxis) {
+        /* Branchless assign, it is ok to set X-axis as not asserted when already handling the Y-axis */
+        xPositionAsserted = EBoapBool_BoolFalse;
 
-            xPositionAsserted = false;
-        }
         /* Level the plate and clear the state */
         BoapServoSetPosition(s_stateContexts[s_currentStateAxis].ServoObject, 0.0f);
         BoapFilterReset(s_stateContexts[s_currentStateAxis].MovingAverageFilter);
@@ -402,7 +401,7 @@ PRIVATE void BoapControlHandleTimerExpired(SBoapEvent * event) {
 
     MEMORY_BARRIER();
     /* Mark exit out of the event handler */
-    s_inHandlerMarker = false;
+    s_inHandlerMarker = EBoapBool_BoolFalse;
 }
 
 PRIVATE void BoapControlSetNewSamplingPeriod(r32 samplingPeriod) {
@@ -477,8 +476,7 @@ PRIVATE void BoapControlTimerCallback(void * arg) {
 
     s_timerOverflows++;
 
-    MEMORY_BARRIER();
-    if (likely(false == s_inHandlerMarker)) {
+    if (likely(EBoapBool_BoolFalse == s_inHandlerMarker)) {
 
         (void) BoapEventSend(EBoapEvent_SamplingTimerExpired, NULL);
 
@@ -560,21 +558,30 @@ PRIVATE void BoapControlHandleNewSetpointReq(SBoapAcpMsg * request) {
 
 PRIVATE void BoapControlHandleGetPidSettingsReq(SBoapAcpMsg * request) {
 
-    /* Send the response message */
-    SBoapAcpMsg * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_GET_PID_SETTINGS_RESP, sizeof(SBoapAcpGetPidSettingsResp));
-    if (likely(NULL != response)) {
+    SBoapAcpGetPidSettingsReq * reqPayload = (SBoapAcpGetPidSettingsReq *) BoapAcpMsgGetPayload(request);
 
-        SBoapAcpGetPidSettingsReq * reqPayload = (SBoapAcpGetPidSettingsReq *) BoapAcpMsgGetPayload(request);
-        SBoapAcpGetPidSettingsResp * respPayload = (SBoapAcpGetPidSettingsResp *) BoapAcpMsgGetPayload(response);
-        respPayload->AxisId = reqPayload->AxisId;
-        respPayload->ProportionalGain = BoapPidGetProportionalGain(s_stateContexts[reqPayload->AxisId].PidRegulator);
-        respPayload->IntegralGain = BoapPidGetIntegralGain(s_stateContexts[reqPayload->AxisId].PidRegulator);
-        respPayload->DerivativeGain = BoapPidGetDerivativeGain(s_stateContexts[respPayload->AxisId].PidRegulator);
-        BoapAcpMsgSend(response);
+    /* Assert valid axis */
+    if (BOAP_AXIS_VALID(reqPayload->AxisId)) {
+
+        /* Send the response message */
+        SBoapAcpMsg * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_GET_PID_SETTINGS_RESP, sizeof(SBoapAcpGetPidSettingsResp));
+        if (likely(NULL != response)) {
+
+            SBoapAcpGetPidSettingsResp * respPayload = (SBoapAcpGetPidSettingsResp *) BoapAcpMsgGetPayload(response);
+            respPayload->AxisId = reqPayload->AxisId;
+            respPayload->ProportionalGain = BoapPidGetProportionalGain(s_stateContexts[reqPayload->AxisId].PidRegulator);
+            respPayload->IntegralGain = BoapPidGetIntegralGain(s_stateContexts[reqPayload->AxisId].PidRegulator);
+            respPayload->DerivativeGain = BoapPidGetDerivativeGain(s_stateContexts[respPayload->AxisId].PidRegulator);
+            BoapAcpMsgSend(response);
+
+        } else {
+
+            BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create BOAP_ACP_GET_PID_SETTINGS_RESP");
+        }
 
     } else {
 
-        BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create BOAP_ACP_GET_PID_SETTINGS_RESP");
+        BoapLogPrint(EBoapLogSeverityLevel_Warning, "Invalid axis ID in BOAP_ACP_GET_PID_SETTINGS_REQ: %d", reqPayload->AxisId);
     }
 
     /* Destroy the request message */
@@ -585,32 +592,40 @@ PRIVATE void BoapControlHandleSetPidSettingsReq(SBoapAcpMsg * request) {
 
     SBoapAcpSetPidSettingsReq * reqPayload = (SBoapAcpSetPidSettingsReq *) BoapAcpMsgGetPayload(request);
 
-    /* Change the settings */
-    r32 oldProportionalGain = BoapPidSetProportionalGain(s_stateContexts[reqPayload->AxisId].PidRegulator, reqPayload->ProportionalGain);
-    r32 oldIntegralGain = BoapPidSetIntegralGain(s_stateContexts[reqPayload->AxisId].PidRegulator, reqPayload->IntegralGain);
-    r32 oldDerivativeGain = BoapPidSetDerivativeGain(s_stateContexts[reqPayload->AxisId].PidRegulator, reqPayload->DerivativeGain);
+    /* Assert valid axis */
+    if (BOAP_AXIS_VALID(reqPayload->AxisId)) {
 
-    BoapLogPrint(EBoapLogSeverityLevel_Info, "Changed %s PID settings from (%f, %f, %f) to (%f, %f, %f)",
-        BOAP_AXIS_NAME(reqPayload->AxisId), oldProportionalGain, oldIntegralGain, oldDerivativeGain,
-        reqPayload->ProportionalGain, reqPayload->IntegralGain, reqPayload->DerivativeGain);
+        /* Change the settings */
+        r32 oldProportionalGain = BoapPidSetProportionalGain(s_stateContexts[reqPayload->AxisId].PidRegulator, reqPayload->ProportionalGain);
+        r32 oldIntegralGain = BoapPidSetIntegralGain(s_stateContexts[reqPayload->AxisId].PidRegulator, reqPayload->IntegralGain);
+        r32 oldDerivativeGain = BoapPidSetDerivativeGain(s_stateContexts[reqPayload->AxisId].PidRegulator, reqPayload->DerivativeGain);
 
-    /* Send the response message */
-    SBoapAcpMsg * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_SET_PID_SETTINGS_RESP, sizeof(SBoapAcpSetPidSettingsResp));
-    if (likely(NULL != response)) {
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "Changed %s PID settings from (%f, %f, %f) to (%f, %f, %f)",
+            BOAP_AXIS_NAME(reqPayload->AxisId), oldProportionalGain, oldIntegralGain, oldDerivativeGain,
+            reqPayload->ProportionalGain, reqPayload->IntegralGain, reqPayload->DerivativeGain);
 
-        SBoapAcpSetPidSettingsResp * respPayload = (SBoapAcpSetPidSettingsResp *) BoapAcpMsgGetPayload(response);
-        respPayload->AxisId = reqPayload->AxisId;
-        respPayload->OldProportionalGain = oldProportionalGain;
-        respPayload->OldIntegralGain = oldIntegralGain;
-        respPayload->OldDerivativeGain = oldDerivativeGain;
-        respPayload->NewProportionalGain = reqPayload->ProportionalGain;
-        respPayload->NewIntegralGain = reqPayload->IntegralGain;
-        respPayload->NewDerivativeGain = reqPayload->DerivativeGain;
-        BoapAcpMsgSend(response);
+        /* Send the response message */
+        SBoapAcpMsg * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_SET_PID_SETTINGS_RESP, sizeof(SBoapAcpSetPidSettingsResp));
+        if (likely(NULL != response)) {
+
+            SBoapAcpSetPidSettingsResp * respPayload = (SBoapAcpSetPidSettingsResp *) BoapAcpMsgGetPayload(response);
+            respPayload->AxisId = reqPayload->AxisId;
+            respPayload->OldProportionalGain = oldProportionalGain;
+            respPayload->OldIntegralGain = oldIntegralGain;
+            respPayload->OldDerivativeGain = oldDerivativeGain;
+            respPayload->NewProportionalGain = reqPayload->ProportionalGain;
+            respPayload->NewIntegralGain = reqPayload->IntegralGain;
+            respPayload->NewDerivativeGain = reqPayload->DerivativeGain;
+            BoapAcpMsgSend(response);
+
+        } else {
+
+            BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create BOAP_ACP_SET_PID_SETTINGS_RESP");
+        }
 
     } else {
 
-        BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create BOAP_ACP_SET_PID_SETTINGS_RESP");
+        BoapLogPrint(EBoapLogSeverityLevel_Warning, "Invalid axis ID in BOAP_ACP_SET_PID_SETTINGS_REQ: %d", reqPayload->AxisId);
     }
 
     /* Destroy the request message */
@@ -636,36 +651,44 @@ PRIVATE void BoapControlHandleSetSamplingPeriodReq(SBoapAcpMsg * request) {
 
     SBoapAcpSetSamplingPeriodReq * reqPayload = (SBoapAcpSetSamplingPeriodReq *) BoapAcpMsgGetPayload(request);
 
-    r32 oldSamplingPeriod = s_samplingPeriod;
-    u64 newTimerPeriod = BOAP_CONTROL_SAMPLING_PERIOD_TO_TIMER_PERIOD(reqPayload->SamplingPeriod);
+    /* Assert valid sampling period */
+    if (reqPayload->SamplingPeriod > 0.0f) {
 
-    /* Stop the timer */
-    (void) esp_timer_stop(s_timerHandle);
+        r32 oldSamplingPeriod = s_samplingPeriod;
+        u64 newTimerPeriod = BOAP_CONTROL_SAMPLING_PERIOD_TO_TIMER_PERIOD(reqPayload->SamplingPeriod);
 
-    /* Change the settings of the regulators */
-    BoapPidSetSamplingPeriod(s_stateContexts[EBoapAxis_X].PidRegulator, reqPayload->SamplingPeriod);
-    BoapPidSetSamplingPeriod(s_stateContexts[EBoapAxis_Y].PidRegulator, reqPayload->SamplingPeriod);
+        /* Stop the timer */
+        (void) esp_timer_stop(s_timerHandle);
 
-    /* Store the new sampling period */
-    BoapControlSetNewSamplingPeriod(reqPayload->SamplingPeriod);
+        /* Change the settings of the regulators */
+        BoapPidSetSamplingPeriod(s_stateContexts[EBoapAxis_X].PidRegulator, reqPayload->SamplingPeriod);
+        BoapPidSetSamplingPeriod(s_stateContexts[EBoapAxis_Y].PidRegulator, reqPayload->SamplingPeriod);
 
-    /* Rearm the timer with the new period */
-    (void) esp_timer_start_periodic(s_timerHandle, newTimerPeriod);
+        /* Store the new sampling period */
+        BoapControlSetNewSamplingPeriod(reqPayload->SamplingPeriod);
 
-    BoapLogPrint(EBoapLogSeverityLevel_Info, "Sampling period changed from %f to %f", oldSamplingPeriod, reqPayload->SamplingPeriod);
+        /* Rearm the timer with the new period */
+        (void) esp_timer_start_periodic(s_timerHandle, newTimerPeriod);
 
-    /* Send the response message */
-    SBoapAcpMsg * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_SET_SAMPLING_PERIOD_RESP, sizeof(SBoapAcpSetSamplingPeriodResp));
-    if (likely(NULL != response)) {
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "Sampling period changed from %f to %f", oldSamplingPeriod, reqPayload->SamplingPeriod);
 
-        SBoapAcpSetSamplingPeriodResp * respPayload = (SBoapAcpSetSamplingPeriodResp *) BoapAcpMsgGetPayload(response);
-        respPayload->NewSamplingPeriod = reqPayload->SamplingPeriod;
-        respPayload->OldSamplingPeriod = oldSamplingPeriod;
-        BoapAcpMsgSend(response);
+        /* Send the response message */
+        SBoapAcpMsg * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_SET_SAMPLING_PERIOD_RESP, sizeof(SBoapAcpSetSamplingPeriodResp));
+        if (likely(NULL != response)) {
+
+            SBoapAcpSetSamplingPeriodResp * respPayload = (SBoapAcpSetSamplingPeriodResp *) BoapAcpMsgGetPayload(response);
+            respPayload->NewSamplingPeriod = reqPayload->SamplingPeriod;
+            respPayload->OldSamplingPeriod = oldSamplingPeriod;
+            BoapAcpMsgSend(response);
+
+        } else {
+
+            BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create BOAP_ACP_SET_SAMPLING_PERIOD_RESP");
+        }
 
     } else {
 
-        BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create BOAP_ACP_SET_SAMPLING_PERIOD_RESP");
+        BoapLogPrint(EBoapLogSeverityLevel_Warning, "Invalid sampling period value in BOAP_ACP_SET_SAMPLING_PERIOD_REQ: %f", reqPayload->SamplingPeriod);
     }
 
     /* Destroy the request message */
@@ -676,14 +699,22 @@ PRIVATE void BoapControlHandleGetFilterOrderReq(SBoapAcpMsg * request) {
 
     SBoapAcpGetFilterOrderReq * reqPayload = (SBoapAcpGetFilterOrderReq *) BoapAcpMsgGetPayload(request);
 
-    /* Send the response message */
-    SBoapAcpMsg * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_GET_FILTER_ORDER_RESP, sizeof(SBoapAcpGetFilterOrderResp));
-    if (likely(NULL != response)) {
+    /* Assert valid axis */
+    if (BOAP_AXIS_VALID(reqPayload->AxisId)) {
 
-        SBoapAcpGetFilterOrderResp * respPayload = (SBoapAcpGetFilterOrderResp *) BoapAcpMsgGetPayload(response);
-        respPayload->AxisId = reqPayload->AxisId;
-        respPayload->FilterOrder = BoapFilterGetOrder(s_stateContexts[reqPayload->AxisId].MovingAverageFilter);
-        BoapAcpMsgSend(response);
+        /* Send the response message */
+        SBoapAcpMsg * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_GET_FILTER_ORDER_RESP, sizeof(SBoapAcpGetFilterOrderResp));
+        if (likely(NULL != response)) {
+
+            SBoapAcpGetFilterOrderResp * respPayload = (SBoapAcpGetFilterOrderResp *) BoapAcpMsgGetPayload(response);
+            respPayload->AxisId = reqPayload->AxisId;
+            respPayload->FilterOrder = BoapFilterGetOrder(s_stateContexts[reqPayload->AxisId].MovingAverageFilter);
+            BoapAcpMsgSend(response);
+        }
+
+    } else {
+
+        BoapLogPrint(EBoapLogSeverityLevel_Warning, "Invalid axis ID in BOAP_ACP_GET_FILTER_ORDER_REQ: %d", reqPayload->AxisId);
     }
 
     /* Destroy the request message */
@@ -694,43 +725,51 @@ PRIVATE void BoapControlHandleSetFilterOrderReq(SBoapAcpMsg * request) {
 
     SBoapAcpSetFilterOrderReq * reqPayload = (SBoapAcpSetFilterOrderReq *) BoapAcpMsgGetPayload(request);
 
-    u32 oldFilterOrder = BoapFilterGetOrder(s_stateContexts[reqPayload->AxisId].MovingAverageFilter);
-    u32 newFilterOrder = oldFilterOrder;
-    EBoapRet status = EBoapRet_Ok;
+    /* Assert valid axis */
+    if (BOAP_AXIS_VALID(reqPayload->AxisId)) {
 
-    /* Create a new filter object */
-    SBoapFilter * newFilter = BoapFilterCreate(reqPayload->FilterOrder);
-    if (likely(NULL != newFilter)) {
+        u32 oldFilterOrder = BoapFilterGetOrder(s_stateContexts[reqPayload->AxisId].MovingAverageFilter);
+        u32 newFilterOrder = oldFilterOrder;
+        EBoapRet status = EBoapRet_Ok;
 
-        newFilterOrder = reqPayload->FilterOrder;
-        /* Destroy old filter object */
-        BoapFilterDestroy(s_stateContexts[reqPayload->AxisId].MovingAverageFilter);
-        /* Set the new filter in place */
-        s_stateContexts[reqPayload->AxisId].MovingAverageFilter = newFilter;
-        BoapLogPrint(EBoapLogSeverityLevel_Info, "Successfully changed %s filter order from %u to %u",
-            BOAP_AXIS_NAME(reqPayload->AxisId), oldFilterOrder, newFilterOrder);
+        /* Create a new filter object */
+        SBoapFilter * newFilter = BoapFilterCreate(reqPayload->FilterOrder);
+        if (likely(NULL != newFilter)) {
+
+            newFilterOrder = reqPayload->FilterOrder;
+            /* Destroy old filter object */
+            BoapFilterDestroy(s_stateContexts[reqPayload->AxisId].MovingAverageFilter);
+            /* Set the new filter in place */
+            s_stateContexts[reqPayload->AxisId].MovingAverageFilter = newFilter;
+            BoapLogPrint(EBoapLogSeverityLevel_Info, "Successfully changed %s filter order from %u to %u",
+                BOAP_AXIS_NAME(reqPayload->AxisId), oldFilterOrder, newFilterOrder);
+
+        } else {
+
+            BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to instantiate a new filter object of order %u for the %s. Filter remains of order %u",
+                reqPayload->FilterOrder, BOAP_AXIS_NAME(reqPayload->AxisId), oldFilterOrder);
+            status = EBoapRet_Error;
+        }
+
+        /* Send the response message */
+        SBoapAcpMsg * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_SET_FILTER_ORDER_RESP, sizeof(SBoapAcpSetFilterOrderResp));
+        if (likely(NULL != response)) {
+
+            SBoapAcpSetFilterOrderResp * respPayload = (SBoapAcpSetFilterOrderResp *) BoapAcpMsgGetPayload(response);
+            respPayload->Status = status;
+            respPayload->AxisId = reqPayload->AxisId;
+            respPayload->NewFilterOrder = newFilterOrder;
+            respPayload->OldFilterOrder = oldFilterOrder;
+            BoapAcpMsgSend(response);
+
+        } else {
+
+            BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create BOAP_ACP_SET_FILTER_ORDER_RESP");
+        }
 
     } else {
 
-        BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to instantiate a new filter object of order %u for the %s. Filter remains of order %u",
-            reqPayload->FilterOrder, BOAP_AXIS_NAME(reqPayload->AxisId), oldFilterOrder);
-        status = EBoapRet_Error;
-    }
-
-    /* Send the response message */
-    SBoapAcpMsg * response = BoapAcpMsgCreate(BoapAcpMsgGetSender(request), BOAP_ACP_SET_FILTER_ORDER_RESP, sizeof(SBoapAcpSetFilterOrderResp));
-    if (likely(NULL != response)) {
-
-        SBoapAcpSetFilterOrderResp * respPayload = (SBoapAcpSetFilterOrderResp *) BoapAcpMsgGetPayload(response);
-        respPayload->Status = status;
-        respPayload->AxisId = reqPayload->AxisId;
-        respPayload->NewFilterOrder = newFilterOrder;
-        respPayload->OldFilterOrder = oldFilterOrder;
-        BoapAcpMsgSend(response);
-
-    } else {
-
-        BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create BOAP_ACP_SET_FILTER_ORDER_RESP");
+        BoapLogPrint(EBoapLogSeverityLevel_Warning, "Invalid axis ID in BOAP_ACP_SET_FILTER_ORDER_REQ: %d", reqPayload->AxisId);
     }
 
     /* Destroy the request message */
