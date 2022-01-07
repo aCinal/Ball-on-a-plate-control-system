@@ -35,4 +35,5 @@ class BoapGuiControllerWindow(QtWidgets.QLabel):
         self.acp.MsgSend(message)
 
     def closeEvent(self, event):
-        self.callbackOnClose()
+        if self.callbackOnClose:
+            self.callbackOnClose()

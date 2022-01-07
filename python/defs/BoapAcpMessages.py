@@ -5,16 +5,19 @@ import os
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from defs.BoapCommon import EBoapBool, EBoapRet, EBoapAxis
-from defs.BoapAcpErrors import BoapAcpUnknownMsgIdError, BoapAcpInvalidMsgSizeError
+from defs.BoapAcpErrors import BoapAcpInvalidMsgSizeError
+import enum
 import struct
 
-class BoapAcpNodeId:
+@enum.unique
+class BoapAcpNodeId(enum.IntEnum):
     BOAP_ACP_NODE_ID_PLANT            = 0x00
     BOAP_ACP_NODE_ID_CONTROLLER       = 0x01
     BOAP_ACP_NODE_ID_PC               = 0x02
     BOAP_ACP_NODE_ID_INVALID          = 0xFF
 
-class BoapAcpMsgId:
+@enum.unique
+class BoapAcpMsgId(enum.IntEnum):
     BOAP_ACP_PING_REQ                 = 0x00
     BOAP_ACP_PING_RESP                = 0x01
     BOAP_ACP_BALL_TRACE_IND           = 0x02
@@ -313,8 +316,5 @@ def BoapAcpMsgGetPayloadById(msgId):
         BoapAcpMsgId.BOAP_ACP_LOG_COMMIT : SBoapAcpLogCommit
     }
 
-    if msgId in mapping:
-        factory = mapping[msgId]
-        return factory() if factory else None
-    else:
-        raise BoapAcpUnknownMsgIdError
+    factory = mapping[msgId]
+    return factory() if factory else None

@@ -20,9 +20,9 @@
 #include <driver/mcpwm.h>
 
 typedef struct SBoapControlStateContext {
-    SBoapFilter * MovingAverageFilter;
-    SBoapPid * PidRegulator;
-    SBoapServo * ServoObject;
+    SBoapFilter * Filter;
+    SBoapPid * Pid;
+    SBoapServo * Servo;
 } SBoapControlStateContext;
 
 #define BOAP_CONTROL_SAMPLING_PERIOD_TO_TIMER_PERIOD(TS)        R32_SECONDS_TO_U64_US( (TS) / 2.0f )
@@ -59,13 +59,13 @@ typedef struct SBoapControlStateContext {
 PRIVATE EBoapAxis s_currentStateAxis = EBoapAxis_X;
 PRIVATE SBoapControlStateContext s_stateContexts[] = {
     [EBoapAxis_X] = {
-        .MovingAverageFilter = NULL,
-        .PidRegulator        = NULL,
-        .ServoObject         = NULL },
+        .Filter = NULL,
+        .Pid    = NULL,
+        .Servo  = NULL },
     [EBoapAxis_Y] = {
-        .MovingAverageFilter = NULL,
-        .PidRegulator        = NULL,
-        .ServoObject         = NULL }
+        .Filter = NULL,
+        .Pid    = NULL,
+        .Servo  = NULL }
 };
 PRIVATE SBoapTouchscreen * s_touchscreenHandle = NULL;
 PRIVATE esp_timer_handle_t s_timerHandle = NULL;
@@ -142,8 +142,8 @@ PUBLIC EBoapRet BoapControlInit(void) {
     IF_OK(status) {
 
         BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating the filter for the x-axis...");
-        s_stateContexts[EBoapAxis_X].MovingAverageFilter = BoapFilterCreate(BOAP_CONTROL_FILTER_ORDER_DEFAULT);
-        if (unlikely(NULL == s_stateContexts[EBoapAxis_X].MovingAverageFilter)) {
+        s_stateContexts[EBoapAxis_X].Filter = BoapFilterCreate(BOAP_CONTROL_FILTER_ORDER_DEFAULT);
+        if (unlikely(NULL == s_stateContexts[EBoapAxis_X].Filter)) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the filter for the x-axis");
             /* Cleanup */
@@ -159,13 +159,13 @@ PUBLIC EBoapRet BoapControlInit(void) {
     IF_OK(status) {
 
         BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating the filter for the y-axis...");
-        s_stateContexts[EBoapAxis_Y].MovingAverageFilter = BoapFilterCreate(BOAP_CONTROL_FILTER_ORDER_DEFAULT);
-        if (unlikely(NULL == s_stateContexts[EBoapAxis_Y].MovingAverageFilter)) {
+        s_stateContexts[EBoapAxis_Y].Filter = BoapFilterCreate(BOAP_CONTROL_FILTER_ORDER_DEFAULT);
+        if (unlikely(NULL == s_stateContexts[EBoapAxis_Y].Filter)) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the filter for the y-axis");
             /* Cleanup */
             BoapTouchscreenDestroy(s_touchscreenHandle);
-            BoapFilterDestroy(s_stateContexts[EBoapAxis_X].MovingAverageFilter);
+            BoapFilterDestroy(s_stateContexts[EBoapAxis_X].Filter);
             status = EBoapRet_Error;
 
         } else {
@@ -177,19 +177,19 @@ PUBLIC EBoapRet BoapControlInit(void) {
     IF_OK(status) {
 
         BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating a PID regulator for the x-axis...");
-        s_stateContexts[EBoapAxis_X].PidRegulator = BoapPidCreate(BOAP_CONTROL_SET_POINT_X_AXIS_MM_DEFAULT,
-                                                                  BOAP_CONTROL_PROPORTIONAL_GAIN_DEFAULT,
-                                                                  BOAP_CONTROL_INTEGRAL_GAIN_DEFAULT,
-                                                                  BOAP_CONTROL_DERIVATIVE_GAIN_DEFAULT,
-                                                                  s_samplingPeriod,
-                                                                  BOAP_CONTROL_SATURATION_THRESHOLD);
-        if (unlikely(NULL == s_stateContexts[EBoapAxis_X].PidRegulator)) {
+        s_stateContexts[EBoapAxis_X].Pid = BoapPidCreate(BOAP_CONTROL_SET_POINT_X_AXIS_MM_DEFAULT,
+                                                         BOAP_CONTROL_PROPORTIONAL_GAIN_DEFAULT,
+                                                         BOAP_CONTROL_INTEGRAL_GAIN_DEFAULT,
+                                                         BOAP_CONTROL_DERIVATIVE_GAIN_DEFAULT,
+                                                         s_samplingPeriod,
+                                                         BOAP_CONTROL_SATURATION_THRESHOLD);
+        if (unlikely(NULL == s_stateContexts[EBoapAxis_X].Pid)) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the PID regulator for the x-axis");
             /* Cleanup */
             BoapTouchscreenDestroy(s_touchscreenHandle);
-            BoapFilterDestroy(s_stateContexts[EBoapAxis_X].MovingAverageFilter);
-            BoapFilterDestroy(s_stateContexts[EBoapAxis_Y].MovingAverageFilter);
+            BoapFilterDestroy(s_stateContexts[EBoapAxis_X].Filter);
+            BoapFilterDestroy(s_stateContexts[EBoapAxis_Y].Filter);
             status = EBoapRet_Error;
 
         } else {
@@ -201,20 +201,20 @@ PUBLIC EBoapRet BoapControlInit(void) {
     IF_OK(status) {
 
         BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating a PID regulator for the y-axis...");
-        s_stateContexts[EBoapAxis_Y].PidRegulator = BoapPidCreate(BOAP_CONTROL_SET_POINT_Y_AXIS_MM_DEFAULT,
-                                                                  BOAP_CONTROL_PROPORTIONAL_GAIN_DEFAULT,
-                                                                  BOAP_CONTROL_INTEGRAL_GAIN_DEFAULT,
-                                                                  BOAP_CONTROL_DERIVATIVE_GAIN_DEFAULT,
-                                                                  s_samplingPeriod,
-                                                                  BOAP_CONTROL_SATURATION_THRESHOLD);
-        if (unlikely(NULL == s_stateContexts[EBoapAxis_Y].PidRegulator)) {
+        s_stateContexts[EBoapAxis_Y].Pid = BoapPidCreate(BOAP_CONTROL_SET_POINT_Y_AXIS_MM_DEFAULT,
+                                                         BOAP_CONTROL_PROPORTIONAL_GAIN_DEFAULT,
+                                                         BOAP_CONTROL_INTEGRAL_GAIN_DEFAULT,
+                                                         BOAP_CONTROL_DERIVATIVE_GAIN_DEFAULT,
+                                                         s_samplingPeriod,
+                                                         BOAP_CONTROL_SATURATION_THRESHOLD);
+        if (unlikely(NULL == s_stateContexts[EBoapAxis_Y].Pid)) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the PID regulator for the y-axis");
             /* Cleanup */
             BoapTouchscreenDestroy(s_touchscreenHandle);
-            BoapFilterDestroy(s_stateContexts[EBoapAxis_X].MovingAverageFilter);
-            BoapFilterDestroy(s_stateContexts[EBoapAxis_Y].MovingAverageFilter);
-            BoapPidDestroy(s_stateContexts[EBoapAxis_X].PidRegulator);
+            BoapFilterDestroy(s_stateContexts[EBoapAxis_X].Filter);
+            BoapFilterDestroy(s_stateContexts[EBoapAxis_Y].Filter);
+            BoapPidDestroy(s_stateContexts[EBoapAxis_X].Pid);
             status = EBoapRet_Error;
 
         } else {
@@ -229,22 +229,22 @@ PUBLIC EBoapRet BoapControlInit(void) {
             BOAP_CONTROL_PWM_PIN_X_AXIS, BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US, BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US, BOAP_CONTROL_SERVO_MAX_ANGLE_DEG,
             BOAP_CONTROL_SERVO_X_AXIS_OFFSET_DEG);
 
-        s_stateContexts[EBoapAxis_X].ServoObject = BoapServoCreate(BOAP_CONTROL_PWM_UNIT_X_AXIS,
-                                                                   BOAP_CONTROL_PWM_PIN_X_AXIS,
-                                                                   BOAP_CONTROL_PWM_FREQUENCY,
-                                                                   BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US,
-                                                                   BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US,
-                                                                   DEG_TO_RAD(BOAP_CONTROL_SERVO_MAX_ANGLE_DEG),
-                                                                   DEG_TO_RAD(BOAP_CONTROL_SERVO_X_AXIS_OFFSET_DEG));
-        if (unlikely(NULL == s_stateContexts[EBoapAxis_X].ServoObject)) {
+        s_stateContexts[EBoapAxis_X].Servo = BoapServoCreate(BOAP_CONTROL_PWM_UNIT_X_AXIS,
+                                                             BOAP_CONTROL_PWM_PIN_X_AXIS,
+                                                             BOAP_CONTROL_PWM_FREQUENCY,
+                                                             BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US,
+                                                             BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US,
+                                                             DEG_TO_RAD(BOAP_CONTROL_SERVO_MAX_ANGLE_DEG),
+                                                             DEG_TO_RAD(BOAP_CONTROL_SERVO_X_AXIS_OFFSET_DEG));
+        if (unlikely(NULL == s_stateContexts[EBoapAxis_X].Servo)) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the servo object for the x-axis");
             /* Cleanup */
             BoapTouchscreenDestroy(s_touchscreenHandle);
-            BoapFilterDestroy(s_stateContexts[EBoapAxis_X].MovingAverageFilter);
-            BoapFilterDestroy(s_stateContexts[EBoapAxis_Y].MovingAverageFilter);
-            BoapPidDestroy(s_stateContexts[EBoapAxis_X].PidRegulator);
-            BoapPidDestroy(s_stateContexts[EBoapAxis_Y].PidRegulator);
+            BoapFilterDestroy(s_stateContexts[EBoapAxis_X].Filter);
+            BoapFilterDestroy(s_stateContexts[EBoapAxis_Y].Filter);
+            BoapPidDestroy(s_stateContexts[EBoapAxis_X].Pid);
+            BoapPidDestroy(s_stateContexts[EBoapAxis_Y].Pid);
             status = EBoapRet_Error;
 
         } else {
@@ -259,23 +259,23 @@ PUBLIC EBoapRet BoapControlInit(void) {
             BOAP_CONTROL_PWM_PIN_Y_AXIS, BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US, BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US, BOAP_CONTROL_SERVO_MAX_ANGLE_DEG,
             BOAP_CONTROL_SERVO_Y_AXIS_OFFSET_DEG);
 
-        s_stateContexts[EBoapAxis_Y].ServoObject = BoapServoCreate(BOAP_CONTROL_PWM_UNIT_Y_AXIS,
-                                                                   BOAP_CONTROL_PWM_PIN_Y_AXIS,
-                                                                   BOAP_CONTROL_PWM_FREQUENCY,
-                                                                   BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US,
-                                                                   BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US,
-                                                                   DEG_TO_RAD(BOAP_CONTROL_SERVO_MAX_ANGLE_DEG),
-                                                                   DEG_TO_RAD(BOAP_CONTROL_SERVO_Y_AXIS_OFFSET_DEG));
-        if (unlikely(NULL == s_stateContexts[EBoapAxis_Y].ServoObject)) {
+        s_stateContexts[EBoapAxis_Y].Servo = BoapServoCreate(BOAP_CONTROL_PWM_UNIT_Y_AXIS,
+                                                             BOAP_CONTROL_PWM_PIN_Y_AXIS,
+                                                             BOAP_CONTROL_PWM_FREQUENCY,
+                                                             BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US,
+                                                             BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US,
+                                                             DEG_TO_RAD(BOAP_CONTROL_SERVO_MAX_ANGLE_DEG),
+                                                             DEG_TO_RAD(BOAP_CONTROL_SERVO_Y_AXIS_OFFSET_DEG));
+        if (unlikely(NULL == s_stateContexts[EBoapAxis_Y].Servo)) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the servo object for the y-axis");
             /* Cleanup */
             BoapTouchscreenDestroy(s_touchscreenHandle);
-            BoapFilterDestroy(s_stateContexts[EBoapAxis_X].MovingAverageFilter);
-            BoapFilterDestroy(s_stateContexts[EBoapAxis_Y].MovingAverageFilter);
-            BoapPidDestroy(s_stateContexts[EBoapAxis_X].PidRegulator);
-            BoapPidDestroy(s_stateContexts[EBoapAxis_Y].PidRegulator);
-            BoapServoDestroy(s_stateContexts[EBoapAxis_X].ServoObject);
+            BoapFilterDestroy(s_stateContexts[EBoapAxis_X].Filter);
+            BoapFilterDestroy(s_stateContexts[EBoapAxis_Y].Filter);
+            BoapPidDestroy(s_stateContexts[EBoapAxis_X].Pid);
+            BoapPidDestroy(s_stateContexts[EBoapAxis_Y].Pid);
+            BoapServoDestroy(s_stateContexts[EBoapAxis_X].Servo);
             status = EBoapRet_Error;
 
         } else {
@@ -298,12 +298,12 @@ PUBLIC EBoapRet BoapControlInit(void) {
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the timer");
             /* Cleanup */
             BoapTouchscreenDestroy(s_touchscreenHandle);
-            BoapFilterDestroy(s_stateContexts[EBoapAxis_X].MovingAverageFilter);
-            BoapFilterDestroy(s_stateContexts[EBoapAxis_Y].MovingAverageFilter);
-            BoapPidDestroy(s_stateContexts[EBoapAxis_X].PidRegulator);
-            BoapPidDestroy(s_stateContexts[EBoapAxis_Y].PidRegulator);
-            BoapServoDestroy(s_stateContexts[EBoapAxis_X].ServoObject);
-            BoapServoDestroy(s_stateContexts[EBoapAxis_Y].ServoObject);
+            BoapFilterDestroy(s_stateContexts[EBoapAxis_X].Filter);
+            BoapFilterDestroy(s_stateContexts[EBoapAxis_Y].Filter);
+            BoapPidDestroy(s_stateContexts[EBoapAxis_X].Pid);
+            BoapPidDestroy(s_stateContexts[EBoapAxis_Y].Pid);
+            BoapServoDestroy(s_stateContexts[EBoapAxis_X].Servo);
+            BoapServoDestroy(s_stateContexts[EBoapAxis_Y].Servo);
             status = EBoapRet_Error;
 
         } else {
@@ -367,23 +367,23 @@ PRIVATE void BoapControlHandleTimerExpired(SBoapEvent * event) {
         /* On spurious no touch condition, unfilteredPositionMm[s_currentStateAxis] does not change, so use its old value */
 
         /* Filter the sample */
-        r32 filteredPositionMm = BoapFilterGetSample(s_stateContexts[s_currentStateAxis].MovingAverageFilter, unfilteredPositionMm[s_currentStateAxis]);
+        r32 filteredPositionMm = BoapFilterGetSample(s_stateContexts[s_currentStateAxis].Filter, unfilteredPositionMm[s_currentStateAxis]);
         /* Apply PID regulation */
-        r32 regulatorOutputRad = BoapPidGetSample(s_stateContexts[s_currentStateAxis].PidRegulator, MM_TO_M(filteredPositionMm));
+        r32 regulatorOutputRad = BoapPidGetSample(s_stateContexts[s_currentStateAxis].Pid, MM_TO_M(filteredPositionMm));
         /* Set servo position */
-        BoapServoSetPosition(s_stateContexts[s_currentStateAxis].ServoObject, regulatorOutputRad);
+        BoapServoSetPosition(s_stateContexts[s_currentStateAxis].Servo, regulatorOutputRad);
 
         if (EBoapAxis_Y == s_currentStateAxis && xPositionAsserted && s_ballTraceEnable) {
 
             /* Send the trace message */
             BoapControlTraceBallPosition(xSetpointMm, xPositionFilteredMm,
-                M_TO_MM(BoapPidGetSetpoint(s_stateContexts[EBoapAxis_Y].PidRegulator)), filteredPositionMm);
+                M_TO_MM(BoapPidGetSetpoint(s_stateContexts[EBoapAxis_Y].Pid)), filteredPositionMm);
         }
 
         /* Branchless assign, it is ok to overwrite the X-axis data once the trace message is sent */
         xPositionFilteredMm = filteredPositionMm;
         xPositionAsserted = EBoapBool_BoolTrue;
-        xSetpointMm = M_TO_MM(BoapPidGetSetpoint(s_stateContexts[EBoapAxis_X].PidRegulator));
+        xSetpointMm = M_TO_MM(BoapPidGetSetpoint(s_stateContexts[EBoapAxis_X].Pid));
 
     } else {  /* Actual no touch condition */
 
@@ -391,9 +391,9 @@ PRIVATE void BoapControlHandleTimerExpired(SBoapEvent * event) {
         xPositionAsserted = EBoapBool_BoolFalse;
 
         /* Level the plate and clear the state */
-        BoapServoSetPosition(s_stateContexts[s_currentStateAxis].ServoObject, 0.0f);
-        BoapFilterReset(s_stateContexts[s_currentStateAxis].MovingAverageFilter);
-        BoapPidReset(s_stateContexts[s_currentStateAxis].PidRegulator);
+        BoapServoSetPosition(s_stateContexts[s_currentStateAxis].Servo, 0.0f);
+        BoapFilterReset(s_stateContexts[s_currentStateAxis].Filter);
+        BoapPidReset(s_stateContexts[s_currentStateAxis].Pid);
     }
 
     /* State transition */
@@ -549,8 +549,8 @@ PRIVATE void BoapControlHandleNewSetpointReq(SBoapAcpMsg * request) {
     SBoapAcpNewSetpointReq * reqPayload = (SBoapAcpNewSetpointReq *) BoapAcpMsgGetPayload(request);
 
     /* Change the setpoint */
-    (void) BoapPidSetSetpoint(s_stateContexts[EBoapAxis_X].PidRegulator, MM_TO_M(reqPayload->SetpointX));
-    (void) BoapPidSetSetpoint(s_stateContexts[EBoapAxis_Y].PidRegulator, MM_TO_M(reqPayload->SetpointY));
+    (void) BoapPidSetSetpoint(s_stateContexts[EBoapAxis_X].Pid, MM_TO_M(reqPayload->SetpointX));
+    (void) BoapPidSetSetpoint(s_stateContexts[EBoapAxis_Y].Pid, MM_TO_M(reqPayload->SetpointY));
 
     /* Destroy the request message */
     BoapAcpMsgDestroy(request);
@@ -569,9 +569,9 @@ PRIVATE void BoapControlHandleGetPidSettingsReq(SBoapAcpMsg * request) {
 
             SBoapAcpGetPidSettingsResp * respPayload = (SBoapAcpGetPidSettingsResp *) BoapAcpMsgGetPayload(response);
             respPayload->AxisId = reqPayload->AxisId;
-            respPayload->ProportionalGain = BoapPidGetProportionalGain(s_stateContexts[reqPayload->AxisId].PidRegulator);
-            respPayload->IntegralGain = BoapPidGetIntegralGain(s_stateContexts[reqPayload->AxisId].PidRegulator);
-            respPayload->DerivativeGain = BoapPidGetDerivativeGain(s_stateContexts[respPayload->AxisId].PidRegulator);
+            respPayload->ProportionalGain = BoapPidGetProportionalGain(s_stateContexts[reqPayload->AxisId].Pid);
+            respPayload->IntegralGain = BoapPidGetIntegralGain(s_stateContexts[reqPayload->AxisId].Pid);
+            respPayload->DerivativeGain = BoapPidGetDerivativeGain(s_stateContexts[respPayload->AxisId].Pid);
             BoapAcpMsgSend(response);
 
         } else {
@@ -596,9 +596,9 @@ PRIVATE void BoapControlHandleSetPidSettingsReq(SBoapAcpMsg * request) {
     if (BOAP_AXIS_VALID(reqPayload->AxisId)) {
 
         /* Change the settings */
-        r32 oldProportionalGain = BoapPidSetProportionalGain(s_stateContexts[reqPayload->AxisId].PidRegulator, reqPayload->ProportionalGain);
-        r32 oldIntegralGain = BoapPidSetIntegralGain(s_stateContexts[reqPayload->AxisId].PidRegulator, reqPayload->IntegralGain);
-        r32 oldDerivativeGain = BoapPidSetDerivativeGain(s_stateContexts[reqPayload->AxisId].PidRegulator, reqPayload->DerivativeGain);
+        r32 oldProportionalGain = BoapPidSetProportionalGain(s_stateContexts[reqPayload->AxisId].Pid, reqPayload->ProportionalGain);
+        r32 oldIntegralGain = BoapPidSetIntegralGain(s_stateContexts[reqPayload->AxisId].Pid, reqPayload->IntegralGain);
+        r32 oldDerivativeGain = BoapPidSetDerivativeGain(s_stateContexts[reqPayload->AxisId].Pid, reqPayload->DerivativeGain);
 
         BoapLogPrint(EBoapLogSeverityLevel_Info, "Changed %s PID settings from (%f, %f, %f) to (%f, %f, %f)",
             BOAP_AXIS_NAME(reqPayload->AxisId), oldProportionalGain, oldIntegralGain, oldDerivativeGain,
@@ -661,8 +661,8 @@ PRIVATE void BoapControlHandleSetSamplingPeriodReq(SBoapAcpMsg * request) {
         (void) esp_timer_stop(s_timerHandle);
 
         /* Change the settings of the regulators */
-        BoapPidSetSamplingPeriod(s_stateContexts[EBoapAxis_X].PidRegulator, reqPayload->SamplingPeriod);
-        BoapPidSetSamplingPeriod(s_stateContexts[EBoapAxis_Y].PidRegulator, reqPayload->SamplingPeriod);
+        BoapPidSetSamplingPeriod(s_stateContexts[EBoapAxis_X].Pid, reqPayload->SamplingPeriod);
+        BoapPidSetSamplingPeriod(s_stateContexts[EBoapAxis_Y].Pid, reqPayload->SamplingPeriod);
 
         /* Store the new sampling period */
         BoapControlSetNewSamplingPeriod(reqPayload->SamplingPeriod);
@@ -708,7 +708,7 @@ PRIVATE void BoapControlHandleGetFilterOrderReq(SBoapAcpMsg * request) {
 
             SBoapAcpGetFilterOrderResp * respPayload = (SBoapAcpGetFilterOrderResp *) BoapAcpMsgGetPayload(response);
             respPayload->AxisId = reqPayload->AxisId;
-            respPayload->FilterOrder = BoapFilterGetOrder(s_stateContexts[reqPayload->AxisId].MovingAverageFilter);
+            respPayload->FilterOrder = BoapFilterGetOrder(s_stateContexts[reqPayload->AxisId].Filter);
             BoapAcpMsgSend(response);
         }
 
@@ -728,7 +728,7 @@ PRIVATE void BoapControlHandleSetFilterOrderReq(SBoapAcpMsg * request) {
     /* Assert valid axis */
     if (BOAP_AXIS_VALID(reqPayload->AxisId)) {
 
-        u32 oldFilterOrder = BoapFilterGetOrder(s_stateContexts[reqPayload->AxisId].MovingAverageFilter);
+        u32 oldFilterOrder = BoapFilterGetOrder(s_stateContexts[reqPayload->AxisId].Filter);
         u32 newFilterOrder = oldFilterOrder;
         EBoapRet status = EBoapRet_Ok;
 
@@ -738,9 +738,9 @@ PRIVATE void BoapControlHandleSetFilterOrderReq(SBoapAcpMsg * request) {
 
             newFilterOrder = reqPayload->FilterOrder;
             /* Destroy old filter object */
-            BoapFilterDestroy(s_stateContexts[reqPayload->AxisId].MovingAverageFilter);
+            BoapFilterDestroy(s_stateContexts[reqPayload->AxisId].Filter);
             /* Set the new filter in place */
-            s_stateContexts[reqPayload->AxisId].MovingAverageFilter = newFilter;
+            s_stateContexts[reqPayload->AxisId].Filter = newFilter;
             BoapLogPrint(EBoapLogSeverityLevel_Info, "Successfully changed %s filter order from %u to %u",
                 BOAP_AXIS_NAME(reqPayload->AxisId), oldFilterOrder, newFilterOrder);
 

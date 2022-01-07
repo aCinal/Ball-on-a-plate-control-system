@@ -5,10 +5,11 @@ import os
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
-from defs.BoapAcpMessages import BoapAcpMsgGetPayloadById, BoapAcpNodeId
-from defs.BoapAcpErrors import BoapAcpUnknownMsgIdError
+from defs.BoapAcpMessages import BoapAcpMsgGetPayloadById, BoapAcpNodeId, BoapAcpMsgId
+from defs.BoapAcpErrors import BoapAcpMalformedMessageError
 import serial
 import threading
+import struct
 
 BOAP_ACP_WAIT_FOREVER = -1
 
@@ -22,7 +23,8 @@ class BoapAcp:
         self.baud = baud
         self.writeLock = threading.Lock()
 
-        # Open serial port
+        # Open the serial port
+        self.log.Info('Opening the serial port...')
         self.serial = serial.Serial(port = self.port, baudrate = self.baud)
 
     def MsgCreate(self, receiver, msgId):
@@ -33,23 +35,29 @@ class BoapAcp:
         if msg.payload:
             serialMessage += bytearray(msg.payload.Serialize())
         # Call serial API
-        self.writeLock.acquire()
-        self.serial.write(serialMessage)
-        self.writeLock.release()
+        with self.writeLock:
+            self.serial.write(serialMessage)
 
     def MsgReceive(self):
         # Block on read (no timeout)
-        header = self.serial.read(self.HEADER_SIZE)
+        msg = None
+        while not msg:
+            # Read from the serial port
+            header = self.serial.read(self.HEADER_SIZE)
 
-        if header:
+            # Validate the header
+            if not self.ValidHeader(header):
+                # Flush the OS buffer...
+                self.serial.read_all()
+                # ...and try again
+                continue
+
+            # Parse the header
             msgId, sender, receiver, payloadSize = header
-
-            # Assert correctly routed message
-            if receiver != BoapAcpNodeId.BOAP_ACP_NODE_ID_PC:
-                return None
 
             payload = None
             if payloadSize:
+                # Received the payload if any declared in the header
                 timedOut = False
                 def timerCallback():
                     nonlocal timedOut
@@ -63,12 +71,20 @@ class BoapAcp:
                 if timedOut:
                     self.log.Warning('Failed to receive the payload in time (header: msgId=0x%02X, sender=0x%02X, receiver=0x%02X, payloadSize=%d)' \
                         % (msgId, sender, receiver, payloadSize))
-                    return None
+                    continue
 
             try:
-                return self.Msg(msgId, sender, receiver, payload)
-            except BoapAcpUnknownMsgIdError:
-                return None
+                msg = self.Msg(msgId, sender, receiver, payload)
+            except BoapAcpMalformedMessageError:
+                self.log.Error('Failed to parse the payload of message 0x%02X from 0x%02X' % (msgId, sender))
+                # Flush the OS buffer
+                self.serial.read_all()
+        return msg
+
+    def ValidHeader(self, header):
+        # Parse the header
+        msgId, sender, receiver, _ = header
+        return receiver == BoapAcpNodeId.BOAP_ACP_NODE_ID_PC and sender in list(BoapAcpNodeId) and msgId in list(BoapAcpMsgId)
 
     class Msg:
         def __init__ (self, msgId, sender, receiver, serialPayload = None):
@@ -80,7 +96,10 @@ class BoapAcp:
             self.payload = BoapAcpMsgGetPayloadById(self.msgId)
             if self.payload:
                 if serialPayload:
-                    self.payload.Parse(serialPayload)
+                    try:
+                        self.payload.Parse(serialPayload)
+                    except struct.error:
+                        raise BoapAcpMalformedMessageError
                 self.payloadSize = self.payload.Size()
 
         def GetId(self):

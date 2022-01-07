@@ -22,7 +22,7 @@ class BoapAcpGateway:
             self.log.Debug('Gateway thread entered')
 
             while True:
-                # Block on the receive
+                # Block on receive
                 message = self.acp.MsgReceive()
 
                 if message:
@@ -43,7 +43,7 @@ class BoapAcpGateway:
                     route.queue.put(message)
                     return
             self.log.Warning('Message ID 0x%02X not found in the routing table (sender: 0x%02X)'
-                % (message.MsgGetId(), message.GetSender()))
+                % (message.GetId(), message.GetSender()))
 
         self.log.Debug('Starting the gateway thread...')
         # Create the gateway thread

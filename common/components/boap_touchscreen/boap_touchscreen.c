@@ -18,20 +18,22 @@
 #define BOAP_TOUCHSCREEN_BUSY_WAIT_THRESHOLD           500
 #define BOAP_TOUCHSCREEN_BUSY_WAIT_FOR_STEADY_STATE()  for (int i = 0; i < BOAP_TOUCHSCREEN_BUSY_WAIT_THRESHOLD; i++) { ; }
 
+typedef struct SBoapTouchscreenAxisContext {
+    adc_channel_t AdcChannel;
+    gpio_num_t AdcPin;
+    gpio_num_t VddPin;
+    gpio_num_t GndPin;
+    gpio_num_t OpenPin;
+    r32 AdcToMmOffset;
+    r32 AdcToMmSlope;
+    u16 AdcMin;
+    u16 AdcMax;
+    SBoapTouchscreenReading LastReading;
+} SBoapTouchscreenAxisContext;
+
 struct SBoapTouchscreen {
     u32 Multisampling;
-    struct {
-        adc_channel_t AdcChannel;
-        gpio_num_t AdcPin;
-        gpio_num_t VddPin;
-        gpio_num_t GndPin;
-        gpio_num_t OpenPin;
-        r32 AdcToMmOffset;
-        r32 AdcToMmSlope;
-        u16 AdcMin;
-        u16 AdcMax;
-    } AxisContexts[2];
-    SBoapTouchscreenReading LastReadings[2];
+    SBoapTouchscreenAxisContext AxisContexts[2];
 };
 
 /**
@@ -105,7 +107,10 @@ PUBLIC SBoapTouchscreen * BoapTouchscreenCreate(r32 xDim, r32 yDim,
         (void) gpio_set_pull_mode(handle->AxisContexts[EBoapAxis_Y].GndPin, GPIO_PULLDOWN_ONLY);
 
         /* Clear the last readings table */
-        (void) memset(handle->LastReadings, 0, sizeof(handle->LastReadings));
+        handle->AxisContexts[EBoapAxis_X].LastReading.Position = 0.0f;
+        handle->AxisContexts[EBoapAxis_X].LastReading.RawAdc = 0;
+        handle->AxisContexts[EBoapAxis_Y].LastReading.Position = 0.0f;
+        handle->AxisContexts[EBoapAxis_Y].LastReading.RawAdc = 0;
     }
 
     return handle;
@@ -164,9 +169,9 @@ PUBLIC SBoapTouchscreenReading * BoapTouchscreenRead(SBoapTouchscreen * handle, 
     /* Assert valid measurement */
     if (likely(measuredAdcValue >= handle->AxisContexts[axis].AdcMin && measuredAdcValue <= handle->AxisContexts[axis].AdcMax)) {
 
-        handle->LastReadings[axis].Position = (r32) measuredAdcValue * handle->AxisContexts[axis].AdcToMmSlope + handle->AxisContexts[axis].AdcToMmOffset;
-        handle->LastReadings[axis].RawAdc = measuredAdcValue;
-        return &handle->LastReadings[axis];
+        handle->AxisContexts[axis].LastReading.Position = (r32) measuredAdcValue * handle->AxisContexts[axis].AdcToMmSlope + handle->AxisContexts[axis].AdcToMmOffset;
+        handle->AxisContexts[axis].LastReading.RawAdc = measuredAdcValue;
+        return &handle->AxisContexts[axis].LastReading;
 
     } else {
 

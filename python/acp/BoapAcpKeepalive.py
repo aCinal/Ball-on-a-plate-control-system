@@ -36,7 +36,6 @@ class BoapAcpKeepalive:
         def PingAndWaitForResponse(node):
             request = self.acp.MsgCreate(node, BoapAcpMsgId.BOAP_ACP_PING_REQ)
             self.acp.MsgSend(request)
-            # Receive the msg from the plant
             try:
                 response = self.msgQueue.get(timeout=self.RESPONSE_TIMEOUT)
                 # Assert message from the correct receiver

@@ -64,7 +64,7 @@ PUBLIC void BoapStatsAllocationFailureHook(size_t blockSize) {
  * @param userDataLen Length of the user payload
  * @param truncatedPayload User payload truncated to fit in the logger buffer
  */
-void BoapStatsLogMessageTruncationHook(u32 userDataLen, const char * truncatedPayload) {
+PUBLIC void BoapStatsLogMessageTruncationHook(u32 userDataLen, const char * truncatedPayload) {
 
     (void) userDataLen;
     (void) truncatedPayload;

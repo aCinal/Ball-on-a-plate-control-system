@@ -16,8 +16,7 @@ import time
 
 def main():
     # Parse command line arguments
-    optParser = BoapEarlyParser()
-    opts = optParser.Parse(sys.argv)
+    opts = BoapEarlyParser().Parse(sys.argv)
 
     # Validate the options, fill in missing values with defaults etc.
     HandleOptionsEarly(opts)
@@ -31,7 +30,7 @@ def main():
     # Initialize the ACP stack
     boapAcp = BoapAcp(logger, opts['-p'], opts['-b'])
 
-    # Start keepalive thread
+    # Start the keepalive thread
     keepalive = BoapAcpKeepalive(boapAcp, logger)
 
     # Initialize the GUI
