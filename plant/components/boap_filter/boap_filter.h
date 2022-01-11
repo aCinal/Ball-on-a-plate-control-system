@@ -14,9 +14,10 @@ typedef struct SBoapFilter SBoapFilter;
 /**
  * @brief Instantiate a moving average filter
  * @param filterOrder Filter order
+ * @param initialValue Value to fill the filter buffer with
  * @return Filter handle
  */
-SBoapFilter * BoapFilterCreate(u32 filterOrder);
+SBoapFilter * BoapFilterCreate(u32 filterOrder, r32 initialValue);
 
 /**
  * @brief Get the next sample from the moving average filter
@@ -36,8 +37,9 @@ u32 BoapFilterGetOrder(SBoapFilter * handle);
 /**
  * @brief Reset the internal state of the filter and clear the buffer
  * @param handle Filter handle
+ * @param initialValue Value to fill the filter buffer with
  */
-void BoapFilterReset(SBoapFilter * handle);
+void BoapFilterReset(SBoapFilter * handle, r32 initialValue);
 
 /**
  * @brief Destroy a moving average filter and release all resources associated with it

@@ -142,7 +142,7 @@ PUBLIC EBoapRet BoapControlInit(void) {
     IF_OK(status) {
 
         BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating the filter for the x-axis...");
-        s_stateContexts[EBoapAxis_X].Filter = BoapFilterCreate(BOAP_CONTROL_FILTER_ORDER_DEFAULT);
+        s_stateContexts[EBoapAxis_X].Filter = BoapFilterCreate(BOAP_CONTROL_FILTER_ORDER_DEFAULT, BOAP_CONTROL_SET_POINT_X_AXIS_MM_DEFAULT);
         if (unlikely(NULL == s_stateContexts[EBoapAxis_X].Filter)) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the filter for the x-axis");
@@ -159,7 +159,7 @@ PUBLIC EBoapRet BoapControlInit(void) {
     IF_OK(status) {
 
         BoapLogPrint(EBoapLogSeverityLevel_Info, "Instantiating the filter for the y-axis...");
-        s_stateContexts[EBoapAxis_Y].Filter = BoapFilterCreate(BOAP_CONTROL_FILTER_ORDER_DEFAULT);
+        s_stateContexts[EBoapAxis_Y].Filter = BoapFilterCreate(BOAP_CONTROL_FILTER_ORDER_DEFAULT, BOAP_CONTROL_SET_POINT_Y_AXIS_MM_DEFAULT);
         if (unlikely(NULL == s_stateContexts[EBoapAxis_Y].Filter)) {
 
             BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to create the filter for the y-axis");
@@ -392,7 +392,7 @@ PRIVATE void BoapControlHandleTimerExpired(SBoapEvent * event) {
 
         /* Level the plate and clear the state */
         BoapServoSetPosition(s_stateContexts[s_currentStateAxis].Servo, 0.0f);
-        BoapFilterReset(s_stateContexts[s_currentStateAxis].Filter);
+        BoapFilterReset(s_stateContexts[s_currentStateAxis].Filter, BoapPidGetSetpoint(s_stateContexts[s_currentStateAxis].Pid));
         BoapPidReset(s_stateContexts[s_currentStateAxis].Pid);
     }
 
@@ -732,8 +732,8 @@ PRIVATE void BoapControlHandleSetFilterOrderReq(SBoapAcpMsg * request) {
         u32 newFilterOrder = oldFilterOrder;
         EBoapRet status = EBoapRet_Ok;
 
-        /* Create a new filter object */
-        SBoapFilter * newFilter = BoapFilterCreate(reqPayload->FilterOrder);
+        /* Create a new filter object - use current set point as initial value */
+        SBoapFilter * newFilter = BoapFilterCreate(reqPayload->FilterOrder, BoapPidGetSetpoint(s_stateContexts[reqPayload->AxisId].Pid));
         if (likely(NULL != newFilter)) {
 
             newFilterOrder = reqPayload->FilterOrder;

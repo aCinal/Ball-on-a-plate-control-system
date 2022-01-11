@@ -21,9 +21,10 @@ struct SBoapFilter {
 /**
  * @brief Instantiate a moving average filter
  * @param filterOrder Filter order
+ * @param initialValue Value to fill the filter buffer with
  * @return Filter handle
  */
-PUBLIC SBoapFilter * BoapFilterCreate(u32 filterOrder) {
+PUBLIC SBoapFilter * BoapFilterCreate(u32 filterOrder, r32 initialValue) {
 
     SBoapFilter * handle = NULL;
 
@@ -32,7 +33,10 @@ PUBLIC SBoapFilter * BoapFilterCreate(u32 filterOrder) {
         handle = BoapMemAlloc(BOAP_FILTER_HANDLE_SIZE(filterOrder));
         if (likely(NULL != handle)) {
 
-            (void) memset(handle, 0, BOAP_FILTER_HANDLE_SIZE(filterOrder));
+            for (u32 i = 0; i < filterOrder; i++) {
+
+                handle->RingBuffer[i] = initialValue;
+            }
             handle->FilterOrder = filterOrder;
         }
     }
@@ -75,12 +79,17 @@ PUBLIC u32 BoapFilterGetOrder(SBoapFilter * handle) {
 /**
  * @brief Reset the internal state of the filter and clear the buffer
  * @param handle Filter handle
+ * @param initialValue Value to fill the filter buffer with
  */
-PUBLIC void BoapFilterReset(SBoapFilter * handle) {
+PUBLIC void BoapFilterReset(SBoapFilter * handle, r32 initialValue) {
 
-    (void) memset(handle->RingBuffer, 0, handle->FilterOrder * sizeof(handle->RingBuffer[0]));
+    for (u32 i = 0; i < handle->FilterOrder; i++) {
+
+        handle->RingBuffer[i] = initialValue;
+    }
+
     handle->RingIndex = 0;
-    handle->PreviousAverage = 0.0;
+    handle->PreviousAverage = initialValue;
 }
 
 /**
