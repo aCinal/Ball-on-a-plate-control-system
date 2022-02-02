@@ -331,10 +331,7 @@ PUBLIC void BoapAcpMsgSend(SBoapAcpMsg * msg) {
     /* Send the message to the gateway thread */
     if (unlikely(pdPASS != xQueueSend(s_txQueueHandle, &msg, 0))) {
 
-        if (NULL != s_txMessageDroppedHook) {
-
-            s_txMessageDroppedHook(BoapAcpMsgGetReceiver(msg), EBoapAcpTxMessageDroppedReason_QueueStarvation);
-        }
+        CALL_HOOK_IF_REGISTERED(s_txMessageDroppedHook, BoapAcpMsgGetReceiver(msg), EBoapAcpTxMessageDroppedReason_QueueStarvation);
         BoapAcpMsgDestroy(msg);
     }
 }
@@ -607,10 +604,7 @@ PRIVATE void BoapAcpEspNowReceiveCallback(const u8 * macAddr, const u8 * data, i
 
         if (unlikely(NULL == msg)) {
 
-            if (NULL != s_rxMessageDroppedHook) {
-
-                s_rxMessageDroppedHook(BoapAcpMsgGetSender((SBoapAcpMsg *) data), EBoapAcpRxMessageDroppedReason_AllocationFailure);
-            }
+            CALL_HOOK_IF_REGISTERED(s_rxMessageDroppedHook, BoapAcpMsgGetSender((SBoapAcpMsg *) data), EBoapAcpRxMessageDroppedReason_AllocationFailure);
             status = EBoapRet_Error;
         }
     }
@@ -622,10 +616,7 @@ PRIVATE void BoapAcpEspNowReceiveCallback(const u8 * macAddr, const u8 * data, i
         /* Push the message handle onto the receive queue */
         if (unlikely(pdPASS != xQueueSend(s_rxQueueHandle, &msg, 0))) {
 
-            if (NULL != s_rxMessageDroppedHook) {
-
-                s_rxMessageDroppedHook(BoapAcpMsgGetSender(msg), EBoapAcpRxMessageDroppedReason_QueueStarvation);
-            }
+            CALL_HOOK_IF_REGISTERED(s_rxMessageDroppedHook, BoapAcpMsgGetSender(msg), EBoapAcpRxMessageDroppedReason_QueueStarvation);
             BoapMemUnref(msg);
             status = EBoapRet_Error;
         }
@@ -637,10 +628,7 @@ PRIVATE void BoapAcpEspNowSendCallback(const u8 * macAddr, esp_now_send_status_t
     /* If NOK status, call the user-defined hook */
     if (unlikely(ESP_NOW_SEND_SUCCESS != status)) {
 
-        if (NULL != s_txMessageDroppedHook) {
-
-            s_txMessageDroppedHook(BoapAcpMacAddrToNodeId(macAddr), EBoapAcpTxMessageDroppedReason_MacLayerError);
-        }
+        CALL_HOOK_IF_REGISTERED(s_txMessageDroppedHook, BoapAcpMacAddrToNodeId(macAddr), EBoapAcpTxMessageDroppedReason_MacLayerError);
     }
 }
 
@@ -683,18 +671,12 @@ PRIVATE void BoapAcpGatewayThreadEntryPoint(void * arg) {
             /* Send the message via ESP-NOW API */
             if (unlikely(ESP_OK != esp_now_send(peerMacAddr, (const u8*) msg, sizeof(SBoapAcpHeader) + BoapAcpMsgGetPayloadSize(msg)))) {
 
-                if (NULL != s_txMessageDroppedHook) {
-
-                    s_txMessageDroppedHook(BoapAcpMsgGetReceiver(msg), EBoapAcpTxMessageDroppedReason_EspNowSendFailed);
-                }
+                CALL_HOOK_IF_REGISTERED(s_txMessageDroppedHook, BoapAcpMsgGetReceiver(msg), EBoapAcpTxMessageDroppedReason_EspNowSendFailed);
             }
 
         } else {
 
-            if (NULL != s_txMessageDroppedHook) {
-
-                s_txMessageDroppedHook(BoapAcpMsgGetReceiver(msg), EBoapAcpTxMessageDroppedReason_InvalidReceiver);
-            }
+            CALL_HOOK_IF_REGISTERED(s_txMessageDroppedHook, BoapAcpMsgGetReceiver(msg), EBoapAcpTxMessageDroppedReason_InvalidReceiver);
         }
 
         /* Destroy the message locally */

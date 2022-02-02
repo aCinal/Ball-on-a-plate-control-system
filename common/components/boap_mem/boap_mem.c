@@ -40,10 +40,7 @@ PUBLIC void * BoapMemAlloc(size_t blockSize) {
 
     if (unlikely(NULL == ret)) {
 
-        if (NULL != s_allocFailureHook) {
-
-            s_allocFailureHook(blockSize);
-        }
+        CALL_HOOK_IF_REGISTERED(s_allocFailureHook, blockSize);
     }
 
     return ret;

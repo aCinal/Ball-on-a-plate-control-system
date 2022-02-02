@@ -81,11 +81,7 @@ PUBLIC void BoapLogPrint(EBoapLogSeverityLevel severityLevel, const char * forma
         /* Write the trailer */
         (void) snprintf(trailer, sizeof(trailer), "\n");
 
-        if (likely(NULL != s_commitCallback)) {
-
-            /* Commit the message */
-            s_commitCallback(BOAP_LOG_HEADER_SIZE + payloadLen + BOAP_LOG_TRAILER_SIZE, header, payload, trailer);
-        }
+        CALL_HOOK_IF_REGISTERED(s_commitCallback, BOAP_LOG_HEADER_SIZE + payloadLen + BOAP_LOG_TRAILER_SIZE, header, payload, trailer);
     }
 }
 

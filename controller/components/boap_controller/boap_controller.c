@@ -31,6 +31,9 @@
 
 #define BOAP_CONTROLLER_TIMER_PERIOD_US                    R32_SECONDS_TO_U64_US(0.01f)
 
+#define BOAP_CONTROLLER_X_POSITION_TO_PLANT_X_POSITION(x)  ( ( (x) / BOAP_CONTROLLER_SCREEN_DIMENSION_X_AXIS_MM ) * BOAP_CONTROL_SCREEN_DIMENSION_X_AXIS_MM )
+#define BOAP_CONTROLLER_Y_POSITION_TO_PLANT_Y_POSITION(y)  ( ( (y) / BOAP_CONTROLLER_SCREEN_DIMENSION_Y_AXIS_MM ) * BOAP_CONTROL_SCREEN_DIMENSION_Y_AXIS_MM )
+
 PRIVATE SBoapTouchscreen * s_touchscreenHandle = NULL;
 PRIVATE esp_timer_handle_t s_timerHandle;
 
@@ -203,8 +206,8 @@ PRIVATE void BoapControllerTimerCallback(void * arg) {
         if (likely(NULL != newSetpointRequest)) {
 
             SBoapAcpNewSetpointReq * payload = BoapAcpMsgGetPayload(newSetpointRequest);
-            payload->SetpointX = xReading->Position;
-            payload->SetpointY = yReading->Position;
+            payload->SetpointX = BOAP_CONTROLLER_X_POSITION_TO_PLANT_X_POSITION(xReading->Position);
+            payload->SetpointY = BOAP_CONTROLLER_Y_POSITION_TO_PLANT_Y_POSITION(yReading->Position);
             BoapAcpMsgSend(newSetpointRequest);
         }
     }

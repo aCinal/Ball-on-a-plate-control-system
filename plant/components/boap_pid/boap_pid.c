@@ -80,7 +80,7 @@ PUBLIC r32 BoapPidGetSample(SBoapPid * handle, r32 pv) {
 
     /* Integral branch with anti-windup - only continue
      * integrating if no windup is occurring or if the
-     * intergrator is counteracting the windup */
+     * integrator is counteracting the windup */
     handle->RunningSum += ZERO_IF_SAME_SIGN(handle->PreviousOutputUnbounded - handle->PreviousOutputBounded, integralStep) * integralStep;
     output += handle->RunningSum;
 
