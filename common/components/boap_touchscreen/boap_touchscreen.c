@@ -157,7 +157,7 @@ PUBLIC SBoapTouchscreenReading * BoapTouchscreenRead(SBoapTouchscreen * handle, 
     for (u32 i = 0; i < handle->Multisampling; i++) {
 
         int temp;
-        assert(ESP_OK == adc_hal_convert(ADC_NUM_1, adcChannel, &temp));
+        ASSERT(ESP_OK == adc_hal_convert(ADC_NUM_1, adcChannel, &temp), "ADC conversion must not fail");
         runningSum += temp;
     }
 
