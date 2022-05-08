@@ -10,9 +10,11 @@ Distributed control application for an ESP32-based ball-on-a-plate system
 git clone https://github.com/espressif/esp-idf
 ```
 
-2. Set up the ESP-IDF environment as described here: `https://github.com/espressif/esp-idf`
+2. Set up the ESP-IDF environment as described here:
+   `https://github.com/espressif/esp-idf`
 
-3. Set hardware-specific parameters in file `env.cmake` (see `env.cmake.example` for reference)
+3. Set hardware-specific parameters in file `env.cmake` (see `env.cmake.example` for
+   reference)
 
 4. Flash the boards and monitor their startup
 
@@ -29,17 +31,16 @@ idf.py -p (PORT) flash monitor
 cd ..
 ```
 
-5. Set up a Python virtual environment and install dependencies
+5. Set up a Python virtual environment and install the front-end application
 
 ```bash
-cd python
 python -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install -e frontend
 ```
 
 6. Start the Python GUI application
 
 ```bash
-python boap.py -p (ROUTER PORT) -e stdout
+python -m boap -p (ROUTER PORT)
 ```
