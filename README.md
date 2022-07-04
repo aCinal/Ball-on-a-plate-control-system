@@ -23,7 +23,7 @@ The PID tuning parameters get initialized to all zeroes for both axes (see e.g. 
 
 ---
 
-<div align="center"><img src="doc/device0.png" height=300/>  <img src="doc/device1.png" height=300/></div>
+<div align="center"><img src="doc/device0.png" height=200/>  <img src="doc/device1.png" height=200/></div>
 
 ---
 
