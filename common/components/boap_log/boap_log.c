@@ -71,10 +71,7 @@ PUBLIC void BoapLogPrint(EBoapLogSeverityLevel severityLevel, const char * forma
         /* If the message is too long truncate it */
         if (unlikely(payloadLen > BOAP_LOG_MAX_PAYLOAD_SIZE)) {
 
-            if (NULL != s_messageTruncationHook) {
-
-                s_messageTruncationHook(payloadLen, payload);
-            }
+            CALL_HOOK_IF_REGISTERED(s_messageTruncationHook, payloadLen, payload);
             payloadLen = BOAP_LOG_MAX_PAYLOAD_SIZE;
         }
 

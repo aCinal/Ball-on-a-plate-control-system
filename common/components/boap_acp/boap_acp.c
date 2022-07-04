@@ -177,7 +177,6 @@ PUBLIC EBoapRet BoapAcpInit(u32 rxQueueLen, u32 txQueueLen) {
     IF_OK(status) {
 
         /* Register peers with all MAC addresses in the lookup table except for the host's */
-        u32 numberOfPeers = sizeof(s_macAddrLookupTable) / sizeof(s_macAddrLookupTable[0]);
         u32 nodeId;
 
         esp_now_peer_info_t peerInfo;
@@ -185,7 +184,7 @@ PUBLIC EBoapRet BoapAcpInit(u32 rxQueueLen, u32 txQueueLen) {
         peerInfo.encrypt = false;
         peerInfo.channel = BOAP_ACP_WIFI_CHANNEL;
 
-        for (nodeId = 0; nodeId < numberOfPeers; nodeId++) {
+        for (nodeId = 0; nodeId < BOAP_ACP_NUMBER_OF_PEERS; nodeId++) {
 
             if (likely(nodeId != s_ownNodeId)) {
 
@@ -635,10 +634,9 @@ PRIVATE void BoapAcpEspNowSendCallback(const u8 * macAddr, esp_now_send_status_t
 PRIVATE TBoapAcpNodeId BoapAcpMacAddrToNodeId(const u8 * macAddr) {
 
     u32 ret = BOAP_ACP_NODE_ID_INVALID;
-    u32 numberOfPeers = sizeof(s_macAddrLookupTable) / sizeof(s_macAddrLookupTable[0]);
     u32 nodeId;
 
-    for (nodeId = 0; nodeId < numberOfPeers; nodeId++) {
+    for (nodeId = 0; nodeId < BOAP_ACP_NUMBER_OF_PEERS; nodeId++) {
 
         if (0 == memcmp(macAddr, s_macAddrLookupTable[nodeId], ESP_NOW_ETH_ALEN)) {
 
