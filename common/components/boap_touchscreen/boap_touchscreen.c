@@ -1,5 +1,5 @@
 /**
- * @file boap_touchscreen.c
+ * @file
  * @author Adrian Cinal
  * @brief File implementing the touchscreen service
  */
@@ -28,7 +28,6 @@ typedef struct SBoapTouchscreenAxisContext {
     r32 AdcToMmSlope;
     u16 AdcMin;
     u16 AdcMax;
-    SBoapTouchscreenReading LastReading;
 } SBoapTouchscreenAxisContext;
 
 struct SBoapTouchscreen {
@@ -44,10 +43,10 @@ struct SBoapTouchscreen {
  * @param xHighAdc Highest ADC reading in the X axis corresponding to the other extreme position
  * @param yLowAdc Lowest ADC reading in the Y axis correspodning to one extreme position
  * @param yHighAdc Highest ADC reading in the Y axis corresponding to the other extreme position
- * @param xAdc X-axis ADC channel number
- * @param yAdc Y-axis ADC channel number
- * @param xGnd X-axis ground pin
- * @param xOpen X-axis open (high Z) pin
+ * @param xAdcChannel X-axis ADC channel number
+ * @param yAdcChannel Y-axis ADC channel number
+ * @param xGndPin X-axis ground pin
+ * @param xOpenPin X-axis open (high Z) pin
  * @param multisampling Number of samples taken and averaged in a single measurement
  * @return Touchscreen handle
  */
@@ -55,7 +54,7 @@ PUBLIC SBoapTouchscreen * BoapTouchscreenCreate(r32 xDim, r32 yDim,
                                          u16 xLowAdc, u16 xHighAdc,
                                          u16 yLowAdc, u16 yHighAdc,
                                          adc_channel_t xAdcChannel, adc_channel_t yAdcChannel,
-                                         gpio_num_t xGnd, gpio_num_t xOpen,
+                                         gpio_num_t xGndPin, gpio_num_t xOpenPin,
                                          u32 multisampling) {
 
     SBoapTouchscreen * handle = BoapMemAlloc(sizeof(SBoapTouchscreen));
@@ -80,10 +79,10 @@ PUBLIC SBoapTouchscreen * BoapTouchscreenCreate(r32 xDim, r32 yDim,
         handle->AxisContexts[EBoapAxis_Y].VddPin = handle->AxisContexts[EBoapAxis_X].AdcPin;
 
         /* X-axis ground pin corresponds to the Y-axis open pin and vice versa */
-        handle->AxisContexts[EBoapAxis_X].GndPin = xGnd;
-        handle->AxisContexts[EBoapAxis_Y].GndPin = xOpen;
-        handle->AxisContexts[EBoapAxis_X].OpenPin = xOpen;
-        handle->AxisContexts[EBoapAxis_Y].OpenPin = xGnd;
+        handle->AxisContexts[EBoapAxis_X].GndPin = xGndPin;
+        handle->AxisContexts[EBoapAxis_Y].GndPin = xOpenPin;
+        handle->AxisContexts[EBoapAxis_X].OpenPin = xOpenPin;
+        handle->AxisContexts[EBoapAxis_Y].OpenPin = xGndPin;
 
         handle->AxisContexts[EBoapAxis_X].AdcMax = xHighAdc;
         handle->AxisContexts[EBoapAxis_X].AdcMin = xLowAdc;
@@ -105,12 +104,6 @@ PUBLIC SBoapTouchscreen * BoapTouchscreenCreate(r32 xDim, r32 yDim,
         /* Permanently pull the GND pins low as they will be pulled down even when used as high impedance inputs */
         (void) gpio_set_pull_mode(handle->AxisContexts[EBoapAxis_X].GndPin, GPIO_PULLDOWN_ONLY);
         (void) gpio_set_pull_mode(handle->AxisContexts[EBoapAxis_Y].GndPin, GPIO_PULLDOWN_ONLY);
-
-        /* Clear the last readings table */
-        handle->AxisContexts[EBoapAxis_X].LastReading.Position = 0.0f;
-        handle->AxisContexts[EBoapAxis_X].LastReading.RawAdc = 0;
-        handle->AxisContexts[EBoapAxis_Y].LastReading.Position = 0.0f;
-        handle->AxisContexts[EBoapAxis_Y].LastReading.RawAdc = 0;
     }
 
     return handle;
@@ -120,12 +113,9 @@ PUBLIC SBoapTouchscreen * BoapTouchscreenCreate(r32 xDim, r32 yDim,
  * @brief Get touchscreen reading
  * @param handle Touchscreen handle
  * @param axis Enum designating the axis of measurement
- * @return Pointer to the reading within the touchscreen structure or NULL on no contact
- * @note Readings are stored separately for each axis, allowing for simultaneous reading of both axes
- *       and only later handling the data if any is available. Also, the readings in the structure do
- *       not get clobbered if an invalid reading (no touch condition) occurs.
+ * @return Touchscreen reading
  */
-PUBLIC SBoapTouchscreenReading * BoapTouchscreenRead(SBoapTouchscreen * handle, EBoapAxis axis) {
+PUBLIC SBoapTouchscreenReading BoapTouchscreenRead(SBoapTouchscreen * handle, EBoapAxis axis) {
 
     gpio_num_t adcPin = handle->AxisContexts[axis].AdcPin;
     gpio_num_t vddPin = handle->AxisContexts[axis].VddPin;
@@ -134,6 +124,7 @@ PUBLIC SBoapTouchscreenReading * BoapTouchscreenRead(SBoapTouchscreen * handle, 
     adc_channel_t adcChannel = handle->AxisContexts[axis].AdcChannel;
     int runningSum = 0;
     u16 measuredAdcValue;
+    SBoapTouchscreenReading reading;
 
     /* Drive the GND pin low */
     (void) gpio_set_direction(gndPin, GPIO_MODE_DEF_OUTPUT);
@@ -166,17 +157,17 @@ PUBLIC SBoapTouchscreenReading * BoapTouchscreenRead(SBoapTouchscreen * handle, 
 
     measuredAdcValue = (u16)(runningSum / handle->Multisampling);
 
+    reading.Position = 0.0f;
+    reading.RawAdc = BOAP_TOUCHSCREEN_INVALID_READING_ADC;
+
     /* Assert valid measurement */
     if (likely(measuredAdcValue >= handle->AxisContexts[axis].AdcMin && measuredAdcValue <= handle->AxisContexts[axis].AdcMax)) {
 
-        handle->AxisContexts[axis].LastReading.Position = (r32) measuredAdcValue * handle->AxisContexts[axis].AdcToMmSlope + handle->AxisContexts[axis].AdcToMmOffset;
-        handle->AxisContexts[axis].LastReading.RawAdc = measuredAdcValue;
-        return &handle->AxisContexts[axis].LastReading;
-
-    } else {
-
-        return NULL;
+        reading.Position = (r32) measuredAdcValue * handle->AxisContexts[axis].AdcToMmSlope + handle->AxisContexts[axis].AdcToMmOffset;
+        reading.RawAdc = measuredAdcValue;
     }
+
+    return reading;
 }
 
 /**

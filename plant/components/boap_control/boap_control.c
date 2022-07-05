@@ -1,5 +1,5 @@
 /**
- * @file boap_control.c
+ * @file
  * @author Adrian Cinal
  * @brief File implementing the ball-on-a-plate control service
  */
@@ -346,23 +346,23 @@ PRIVATE void BoapControlHandleTimerExpired(SBoapEvent * event) {
     MEMORY_BARRIER();
 
     /* Run the ADC conversion */
-    SBoapTouchscreenReading * touchscreenReading = BoapTouchscreenRead(s_touchscreenHandle, s_currentStateAxis);
+    SBoapTouchscreenReading touchscreenReading = BoapTouchscreenRead(s_touchscreenHandle, s_currentStateAxis);
 
-    if (unlikely(NULL == touchscreenReading)) {
-
-        /* Record the no touch condition */
-        noTouchCounter[s_currentStateAxis]++;
-
-    } else {
+    if (likely(BOAP_TOUCHSCREEN_VALID_READ(touchscreenReading))) {
 
         /* Reset the no touch condition counter - ball is touching the plate */
         noTouchCounter[s_currentStateAxis] = 0;
         /* Save the unfiltered position */
-        unfilteredPositionMm[s_currentStateAxis] = touchscreenReading->Position;
+        unfilteredPositionMm[s_currentStateAxis] = touchscreenReading.Position;
+
+    } else {
+
+        /* Record the no touch condition */
+        noTouchCounter[s_currentStateAxis]++;
     }
 
     /* Assert the ball is still on the plate */
-    if (likely((NULL != touchscreenReading) || (noTouchCounter[s_currentStateAxis] < s_noTouchToleranceSamples))) {
+    if (likely(BOAP_TOUCHSCREEN_VALID_READ(touchscreenReading) || (noTouchCounter[s_currentStateAxis] < s_noTouchToleranceSamples))) {
 
         /* On spurious no touch condition, unfilteredPositionMm[s_currentStateAxis] does not change, so use its old value */
 

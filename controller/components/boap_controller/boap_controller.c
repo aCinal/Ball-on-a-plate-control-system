@@ -1,5 +1,5 @@
 /**
- * @file boap_controller.c
+ * @file
  * @author Adrian Cinal
  * @brief File implementing the controller service
  */
@@ -196,18 +196,18 @@ PRIVATE void BoapControllerTimerCallback(void * arg) {
 
     (void) arg;
 
-    SBoapTouchscreenReading * xReading = BoapTouchscreenRead(s_touchscreenHandle, EBoapAxis_X);
-    SBoapTouchscreenReading * yReading = BoapTouchscreenRead(s_touchscreenHandle, EBoapAxis_Y);
+    SBoapTouchscreenReading xReading = BoapTouchscreenRead(s_touchscreenHandle, EBoapAxis_X);
+    SBoapTouchscreenReading yReading = BoapTouchscreenRead(s_touchscreenHandle, EBoapAxis_Y);
 
-    if (NULL != xReading && NULL != yReading) {
+    if (BOAP_TOUCHSCREEN_VALID_READ(xReading) && BOAP_TOUCHSCREEN_VALID_READ(yReading)) {
 
         /* If both axes register valid inputs, send new setpoint request to the plant */
         SBoapAcpMsg * newSetpointRequest = BoapAcpMsgCreate(BOAP_ACP_NODE_ID_PLANT, BOAP_ACP_NEW_SETPOINT_REQ, sizeof(SBoapAcpNewSetpointReq));
         if (likely(NULL != newSetpointRequest)) {
 
             SBoapAcpNewSetpointReq * payload = BoapAcpMsgGetPayload(newSetpointRequest);
-            payload->SetpointX = BOAP_CONTROLLER_X_POSITION_TO_PLANT_X_POSITION(xReading->Position);
-            payload->SetpointY = BOAP_CONTROLLER_Y_POSITION_TO_PLANT_Y_POSITION(yReading->Position);
+            payload->SetpointX = BOAP_CONTROLLER_X_POSITION_TO_PLANT_X_POSITION(xReading.Position);
+            payload->SetpointY = BOAP_CONTROLLER_Y_POSITION_TO_PLANT_Y_POSITION(yReading.Position);
             BoapAcpMsgSend(newSetpointRequest);
         }
     }

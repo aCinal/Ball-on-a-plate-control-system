@@ -1,5 +1,5 @@
 /**
- * @file touchscreen_tuner.c
+ * @file
  * @author Adrian Cinal
  * @brief File providing the entry point for the application
  */
@@ -60,11 +60,11 @@ void app_main(void) {
     BoapLogPrint(EBoapLogSeverityLevel_Info, "Touchscreen instantiated. Entering an infinite loop. Touch the screen at its corner to determine the boundary ADC values");
     for ( ; /* ever */ ; ) {
 
-        SBoapTouchscreenReading * xReading = BoapTouchscreenRead(touchscreen, EBoapAxis_X);
-        SBoapTouchscreenReading * yReading = BoapTouchscreenRead(touchscreen, EBoapAxis_Y);
-        if (NULL != xReading && NULL != yReading) {
+        SBoapTouchscreenReading xReading = BoapTouchscreenRead(touchscreen, EBoapAxis_X);
+        SBoapTouchscreenReading yReading = BoapTouchscreenRead(touchscreen, EBoapAxis_Y);
+        if (BOAP_TOUCHSCREEN_VALID_READ(xReading) && BOAP_TOUCHSCREEN_VALID_READ(yReading)) {
 
-            BoapLogPrint(EBoapLogSeverityLevel_Info, "Read ADC values: (x, y) = (%04hu, %04hu)", xReading->RawAdc, yReading->RawAdc);
+            BoapLogPrint(EBoapLogSeverityLevel_Info, "Read ADC values: (x, y) = (%04hu, %04hu)", xReading.RawAdc, yReading.RawAdc);
         }
         vTaskDelay(pdMS_TO_TICKS(TUNER_SAMPLE_PERIOD_MS));
     }
