@@ -1,5 +1,5 @@
 /**
- * @file boap_filter.h
+ * @file
  * @author Adrian Cinal
  * @brief File defining the interface of the moving average filter utilities
  */
@@ -9,6 +9,7 @@
 
 #include <boap_common.h>
 
+/** @brief Opaque handle of a moving-average filter */
 typedef struct SBoapFilter SBoapFilter;
 
 /**

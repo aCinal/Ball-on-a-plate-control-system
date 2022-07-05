@@ -1,5 +1,5 @@
 /**
- * @file boap_router.c
+ * @file
  * @author Adrian Cinal
  * @brief File implementing the router service
  */

@@ -1,5 +1,5 @@
 /**
- * @file boap_startup.h
+ * @file
  * @author Adrian Cinal
  * @brief File defining the interface for the startup service
  */

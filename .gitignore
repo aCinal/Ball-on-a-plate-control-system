@@ -5,3 +5,10 @@ __pycache__
 *.pyc
 venv/
 *.egg-info
+
+# Ignore documentation except doxygen config and pictures
+doc
+!doc/Doxyfile
+!doc/device0.png
+!doc/device1.png
+!doc/kinematics.png

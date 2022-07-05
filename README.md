@@ -1,6 +1,6 @@
 # Ball-on-a-plate control system
 
-Control application for a 2-DoF ball-on-a-plate system.
+Control application for a 2-DoF ball-on-a-plate system
 
 ## Problem statement and target system
 
@@ -46,13 +46,13 @@ git clone https://github.com/espressif/esp-idf
 ```bash
 cd plant
 idf.py build
-idf.py -p (PORT) flash monitor
+idf.py -p <port> flash monitor
 cd ../router
 idf.py build
-idf.py -p (PORT) flash monitor
+idf.py -p <port> flash monitor
 cd ../controller
 idf.py build
-idf.py -p (PORT) flash monitor
+idf.py -p <port> flash monitor
 cd ..
 ```
 
@@ -67,5 +67,16 @@ pip install -e frontend
 6. Start the Python GUI application
 
 ```bash
-python -m boap -p (ROUTER PORT)
+python -m boap -p <port>
+```
+
+---
+
+## Documentation
+
+To generate source code documentation run:
+
+```bash
+cd doc/
+doxygen
 ```

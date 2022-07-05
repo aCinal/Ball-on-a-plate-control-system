@@ -1,5 +1,5 @@
 /**
- * @file boap_stats.h
+ * @file
  * @author Adrian Cinal
  * @brief File defining the interface for the statistics collection service
  */
@@ -9,24 +9,25 @@
 
 #include <boap_common.h>
 
+/** @brief Global statistics database */
 typedef struct SBoapStatsTable {
 
-    u32 AcpRxMessagesDropped;
-    u32 AcpTxMessagesDropped;
+    u32 AcpRxMessagesDropped;      /*!< Incoming ACP messages dropped counter */
+    u32 AcpTxMessagesDropped;      /*!< Outgoing ACP messages dropped counter */
 
-    u32 AllocationFailures;
+    u32 AllocationFailures;        /*!< Memory allocation failures counter */
 
-    u32 EventsDispatched;
-    u32 EventQueueStarvations;
+    u32 EventsDispatched;          /*!< Total events dispatcher counter */
+    u32 EventQueueStarvations;     /*!< Event send failures counter */
 
-    u32 LogEntriesQueued;
-    u32 LogMessageTruncations;
-    u32 LogQueueStarvations;
+    u32 LogMessageTruncations;     /*!< Message truncations counter */
+    u32 LogQueueStarvations;       /*!< Total number of failed log commits from RT context counter */
 
-    u32 SamplingTimerFalseStarts;
+    u32 SamplingTimerFalseStarts;  /*!< Sampling timer false starts counter (indicative of too low a sampling period) */
 
 } SBoapStatsTable;
 
+/** @brief Global statistics database */
 extern SBoapStatsTable g_boapStatsTable;
 
 /**
@@ -48,7 +49,7 @@ void BoapStatsAllocationFailureHook(size_t blockSize);
  */
 void BoapStatsLogMessageTruncationHook(u32 userDataLen, const char * truncatedPayload);
 
-#define BOAP_STATS_OVERWRITE_IF_HIGHEST_EVER(FIELD, CONTENDER)  ( (g_boapStatsTable.FIELD) = MAX( (g_boapStatsTable.FIELD), (CONTENDER) ) )
-#define BOAP_STATS_INCREMENT(FIELD)                             ( (g_boapStatsTable.FIELD)++ )
+/** @brief Increment a given counter in the global statistics table */
+#define BOAP_STATS_INCREMENT(FIELD)  ( (g_boapStatsTable.FIELD)++ )
 
 #endif /* BOAP_STATS_H */

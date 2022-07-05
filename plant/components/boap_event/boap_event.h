@@ -1,5 +1,5 @@
 /**
- * @file boap_dispatcher.h
+ * @file
  * @author Adrian Cinal
  * @brief File defining the interface of the event dispatcher service
  */
@@ -9,17 +9,17 @@
 
 #include <boap_common.h>
 
-typedef enum EBoapEventType {
-    EBoapEventType_AcpMessagePending = 0,
-    EBoapEventType_DeferredMemoryUnref,
-    EBoapEventType_TimerExpired
-} EBoapEventType;
-
+/** @brief Event handle */
 typedef struct SBoapEvent {
-    u32 eventId;
-    void * payload;
+    u32 eventId;     /*!< Event identifier used to find the corresponding handler */
+    void * payload;  /*!< Application payload */
 } SBoapEvent;
 
+/**
+ * @brief Prototype of a run-to-completion event handler associated with a given event
+ *        type and invoked by the dispatcher when event of this type is received
+ * @see BoapEventHandlerRegister
+ */
 typedef void (*TBoapEventCallback)(SBoapEvent * event);
 
 /**

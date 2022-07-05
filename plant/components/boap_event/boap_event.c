@@ -1,5 +1,5 @@
 /**
- * @file boap_event.c
+ * @file
  * @author Adrian Cinal
  * @brief File implementing the event dispatcher service
  */

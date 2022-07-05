@@ -1,5 +1,5 @@
 /**
- * @file boap_acp.h
+ * @file
  * @author Adrian Cinal
  * @brief File defining the interface of the AC Protocol
  */
@@ -9,12 +9,17 @@
 
 #include <boap_common.h>
 
+/**
+ * @brief Opaque handle of an ACP message
+ * @see BoapAcpMsgCreate, BoapAcpMsgSend, BoapAcpMsgReceive
+ */
 typedef struct SBoapAcpMsg SBoapAcpMsg;
 
-typedef u8 TBoapAcpNodeId;
-typedef u8 TBoapAcpPayloadSize;
-typedef u8 TBoapAcpMsgId;
+typedef u8 TBoapAcpNodeId;       /*!< @brief Identifier of a node in ACP network */
+typedef u8 TBoapAcpPayloadSize;  /*!< @brief ACP message payload size type */
+typedef u8 TBoapAcpMsgId;        /*!< @brief ACP message ID type */
 
+/** @brief Code specifying why an outgoing message was dropped */
 typedef enum EBoapAcpTxMessageDroppedReason {
     EBoapAcpTxMessageDroppedReason_QueueStarvation = 0,
     EBoapAcpTxMessageDroppedReason_EspNowSendFailed,
@@ -22,22 +27,41 @@ typedef enum EBoapAcpTxMessageDroppedReason {
     EBoapAcpTxMessageDroppedReason_InvalidReceiver
 } EBoapAcpTxMessageDroppedReason;
 
+/** @brief Code specifying why an incoming message was dropped */
 typedef enum EBoapAcpRxMessageDroppedReason {
     EBoapAcpRxMessageDroppedReason_AllocationFailure = 0,
     EBoapAcpRxMessageDroppedReason_QueueStarvation
 } EBoapAcpRxMessageDroppedReason;
 
+/**
+ * @brief Prototype of a hook called when an outgoing message is dropped
+ * @see BoapAcpRegisterTxMessageDroppedHook
+ */
 typedef void (* TBoapAcpTxMessageDroppedHook)(TBoapAcpNodeId receiver, EBoapAcpTxMessageDroppedReason reason);
+
+/**
+ * @brief Prototype of a hook called when an incoming message is dropped
+ * @see BoapAcpRegisterRxMessageDroppedHook
+ */
 typedef void (* TBoapAcpRxMessageDroppedHook)(TBoapAcpNodeId sender, EBoapAcpRxMessageDroppedReason reason);
+
+/**
+ * @brief Prototype of a hook used for message tracing
+ * @see BoapAcpTrace
+ */
 typedef void (* TBoapAcpTraceCallback)(SBoapAcpMsg * msg);
 
-#define BOAP_ACP_MSG_ID_INVALID      ( (TBoapAcpMsgId) 0xFF )
+#define BOAP_ACP_MSG_ID_INVALID      ( (TBoapAcpMsgId) 0xFF )   /*!< @brief Explicitly invalid message ID */
 
-#define BOAP_ACP_NODE_ID_PLANT       ( (TBoapAcpNodeId) 0x00 )
-#define BOAP_ACP_NODE_ID_CONTROLLER  ( (TBoapAcpNodeId) 0x01 )
-#define BOAP_ACP_NODE_ID_PC          ( (TBoapAcpNodeId) 0x02 )
-#define BOAP_ACP_NODE_ID_INVALID     ( (TBoapAcpNodeId) 0xFF )
+#define BOAP_ACP_NODE_ID_PLANT       ( (TBoapAcpNodeId) 0x00 )  /*!< @brief Node ID of the plant running the PID control */
+#define BOAP_ACP_NODE_ID_CONTROLLER  ( (TBoapAcpNodeId) 0x01 )  /*!< @brief Node ID of the handheld controller */
+#define BOAP_ACP_NODE_ID_PC          ( (TBoapAcpNodeId) 0x02 )  /*!< @brief Node ID of the operator's PC */
+#define BOAP_ACP_NODE_ID_INVALID     ( (TBoapAcpNodeId) 0xFF )  /*!< @brief Explicitly invalid node ID */
 
+/**
+ * @brief Magic timeout value used to denote infinite wait time when passed to BoapAcpMsgReceive
+ * @see BoapAcpMsgReceive
+ */
 #define BOAP_ACP_WAIT_FOREVER        ( 0xFFFFFFFFU )
 
 /**

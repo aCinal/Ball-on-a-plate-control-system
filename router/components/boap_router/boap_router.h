@@ -1,5 +1,5 @@
 /**
- * @file boap_router.h
+ * @file
  * @author Adrian Cinal
  * @brief File defining the interface of the router service
  */

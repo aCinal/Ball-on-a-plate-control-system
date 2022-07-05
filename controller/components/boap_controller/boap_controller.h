@@ -1,5 +1,5 @@
 /**
- * @file boap_controller.h
+ * @file
  * @author Adrian Cinal
  * @brief File defining the interface of the controller service
  */

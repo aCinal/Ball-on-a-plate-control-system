@@ -1,5 +1,5 @@
 /**
- * @file boap_startup.c
+ * @file
  * @author Adrian Cinal
  * @brief File implementing the startup service
  */

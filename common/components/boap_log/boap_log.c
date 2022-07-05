@@ -1,5 +1,5 @@
 /**
- * @file boap_log.c
+ * @file
  * @author Adrian Cinal
  * @brief File implenting the logger service
  */

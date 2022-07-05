@@ -1,5 +1,5 @@
 /**
- * @file boap_listener.h
+ * @file
  * @author Adrian Cinal
  * @brief File defining the interface of the message listener service
  */

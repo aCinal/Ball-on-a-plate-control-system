@@ -1,5 +1,5 @@
 /**
- * @file boap_servo.c
+ * @file
  * @author Adrian Cinal
  * @brief File implementing the servo control service
  */

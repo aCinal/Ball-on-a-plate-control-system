@@ -1,5 +1,5 @@
 /**
- * @file boap_filter.c
+ * @file
  * @author Adrian Cinal
  * @brief File implementing the moving average filter utilities
  */

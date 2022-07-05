@@ -1,5 +1,5 @@
 /**
- * @file boap_log.h
+ * @file
  * @author Adrian Cinal
  * @brief File defining the interface for the logger service
  */
@@ -9,6 +9,10 @@
 
 #include <boap_common.h>
 
+/**
+ * @brief Logger severity level. Logs of low severity can be filtered out
+ * @see BoapLogSetSeverityThreshold
+ */
 typedef enum EBoapLogSeverityLevel {
     EBoapLogSeverityLevel_Debug = 0,
     EBoapLogSeverityLevel_Info,
@@ -16,7 +20,16 @@ typedef enum EBoapLogSeverityLevel {
     EBoapLogSeverityLevel_Error
 } EBoapLogSeverityLevel;
 
+/**
+ * @brief Prototype of the function called by BoapLog to commit a formatted log message
+ * @see BoapLogRegisterCommitCallback
+ */
 typedef void (* TBoapLogCommitCallback)(u32 len, const char * header, const char * payload, const char * trailer);
+
+/**
+ * @brief Prototype of a hook called on message truncation if registered
+ * @see BoapLogRegisterMessageTruncationHook
+ */
 typedef void (* TBoapLogMessageTruncationHook)(u32 userDataLen, const char * truncatedPayload);
 
 /**

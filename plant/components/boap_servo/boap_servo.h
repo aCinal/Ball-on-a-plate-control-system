@@ -1,5 +1,5 @@
 /**
- * @file boap_servo.h
+ * @file
  * @author Adrian Cinal
  * @brief File defining the interface for the servo control service
  */
@@ -11,6 +11,7 @@
 #include <driver/mcpwm.h>
 #include <driver/gpio.h>
 
+/** @brief Opaque handle of a servomotor object */
 typedef struct SBoapServo SBoapServo;
 
 /**

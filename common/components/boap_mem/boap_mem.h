@@ -1,5 +1,5 @@
 /**
- * @file boap_mem.h
+ * @file
  * @author Adrian Cinal
  * @brief File defining the interface for the memory service
  */
@@ -9,7 +9,10 @@
 
 #include <stddef.h>
 
+/** @brief Prototype of a hook called on allocation failure if registered */
 typedef void (* TBoapMemAllocFailureHook)(size_t blockSize);
+
+/** @brief Prototype of a hook called when memory deallocation occurrs in an ISR */
 typedef void (* TBoapMemIsrUnrefHook)(void * block);
 
 /**

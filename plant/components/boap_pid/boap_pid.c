@@ -1,5 +1,5 @@
 /**
- * @file boap_pid.c
+ * @file
  * @author Adrian Cinal
  * @brief File implementing the PID regulator utilities
  */

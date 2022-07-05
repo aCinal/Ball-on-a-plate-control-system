@@ -1,5 +1,5 @@
 /**
- * @file boap_mem.c
+ * @file
  * @author Adrian Cinal
  * @brief File implementing the memory service
  */

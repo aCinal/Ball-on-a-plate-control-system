@@ -1,5 +1,5 @@
 /**
- * @file boap_acp.c
+ * @file
  * @author Adrian Cinal
  * @brief File implementing the AC Protocol
  */

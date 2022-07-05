@@ -1,5 +1,5 @@
 /**
- * @file boap_stats.c
+ * @file
  * @author Adrian Cinal
  * @brief File implementing the statistics collection service
  */
@@ -84,13 +84,12 @@ PRIVATE void BoapStatsThreadEntryPoint(void * arg) {
         vTaskDelay(BOAP_STATS_THREAD_DELAY_TIME);
 
         /* Upon wake up - collect and log the statistics */
-        BoapLogPrint(EBoapLogSeverityLevel_Info, "ARXD=%u, ATXD=%u, AF=%u, ED=%u, EQS=%u, LEQ=%u, LMT=%u, LQS=%u, STFS=%u",
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "ARXD=%u, ATXD=%u, AF=%u, ED=%u, EQS=%u, LMT=%u, LQS=%u, STFS=%u",
                      g_boapStatsTable.AcpRxMessagesDropped,
                      g_boapStatsTable.AcpTxMessagesDropped,
                      g_boapStatsTable.AllocationFailures,
                      g_boapStatsTable.EventsDispatched,
                      g_boapStatsTable.EventQueueStarvations,
-                     g_boapStatsTable.LogEntriesQueued,
                      g_boapStatsTable.LogMessageTruncations,
                      g_boapStatsTable.LogQueueStarvations,
                      g_boapStatsTable.SamplingTimerFalseStarts);

@@ -1,5 +1,5 @@
 /**
- * @file boap_control.h
+ * @file
  * @author Adrian Cinal
  * @brief File defining the interface of the ball-on-a-plate control service
  */

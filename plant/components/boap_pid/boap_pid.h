@@ -1,5 +1,5 @@
 /**
- * @file boap_pid.h
+ * @file
  * @author Adrian Cinal
  * @brief File defining the interface of the PID regulator utilities
  */
@@ -9,6 +9,7 @@
 
 #include <boap_common.h>
 
+/** @brief Opaque handle of a PID controller */
 typedef struct SBoapPid SBoapPid;
 
 /**
