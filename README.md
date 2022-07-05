@@ -74,7 +74,7 @@ python -m boap -p <port>
 
 ## Documentation
 
-To generate source code documentation run:
+Generate source code documentation
 
 ```bash
 cd doc/

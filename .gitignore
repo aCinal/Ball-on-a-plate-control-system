@@ -7,7 +7,7 @@ venv/
 *.egg-info
 
 # Ignore documentation except doxygen config and pictures
-doc
+doc/*
 !doc/Doxyfile
 !doc/device0.png
 !doc/device1.png
