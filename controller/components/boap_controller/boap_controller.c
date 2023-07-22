@@ -13,7 +13,6 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <esp_timer.h>
-#include <driver/mcpwm.h>
 
 #define BOAP_CONTROLLER_ADC_MULTISAMPLING                  64
 #define BOAP_CONTROLLER_GPIO_NUM_TO_CHANNEL(GPIO_NUM)      ADC1_GPIO##GPIO_NUM##_CHANNEL

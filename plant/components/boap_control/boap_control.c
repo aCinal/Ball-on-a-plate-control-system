@@ -18,12 +18,15 @@
 #include <boap_stats.h>
 #include <esp_timer.h>
 #include <driver/mcpwm.h>
+#include <driver/gpio.h>
 
 typedef struct SBoapControlStateContext {
     SBoapFilter * Filter;
     SBoapPid * Pid;
     SBoapServo * Servo;
 } SBoapControlStateContext;
+
+#define BOAP_CONTROL_GPIO_NUM(GPIO_NUM)                         GPIO_NUM_##GPIO_NUM
 
 #define BOAP_CONTROL_SAMPLING_PERIOD_TO_TIMER_PERIOD(TS)        R32_SECONDS_TO_U64_US( (TS) / 2.0f )
 #define BOAP_CONTROL_SAMPLING_PERIOD_DEFAULT                    0.05
@@ -39,8 +42,8 @@ typedef struct SBoapControlStateContext {
 #define BOAP_CONTROL_SET_POINT_Y_AXIS_MM_DEFAULT                0
 
 #define BOAP_CONTROL_ADC_MULTISAMPLING                          4
-#define BOAP_CONTROL_GND_PIN_X_AXIS                             MACRO_EXPAND(BOAP_GPIO_NUM, BOAP_CONTROL_GND_PIN_X_AXIS_NUM)
-#define BOAP_CONTROL_HIGH_Z_PIN_X_AXIS                          MACRO_EXPAND(BOAP_GPIO_NUM, BOAP_CONTROL_HIGH_Z_PIN_X_AXIS_NUM)
+#define BOAP_CONTROL_GND_PIN_X_AXIS                             MACRO_EXPAND(BOAP_CONTROL_GPIO_NUM, BOAP_CONTROL_GND_PIN_X_AXIS_NUM)
+#define BOAP_CONTROL_HIGH_Z_PIN_X_AXIS                          MACRO_EXPAND(BOAP_CONTROL_GPIO_NUM, BOAP_CONTROL_HIGH_Z_PIN_X_AXIS_NUM)
 #define BOAP_CONTROL_ADC_CHANNEL_X_AXIS                         MACRO_EXPAND(BOAP_TOUCHSCREEN_GPIO_NUM_TO_CHANNEL, BOAP_CONTROL_ADC_PIN_X_AXIS_NUM)
 #define BOAP_CONTROL_ADC_CHANNEL_Y_AXIS                         MACRO_EXPAND(BOAP_TOUCHSCREEN_GPIO_NUM_TO_CHANNEL, BOAP_CONTROL_ADC_PIN_Y_AXIS_NUM)
 
@@ -50,8 +53,8 @@ typedef struct SBoapControlStateContext {
 #define BOAP_CONTROL_PWM_FREQUENCY                              50
 #define BOAP_CONTROL_PWM_UNIT_X_AXIS                            MCPWM_UNIT_0
 #define BOAP_CONTROL_PWM_UNIT_Y_AXIS                            MCPWM_UNIT_1
-#define BOAP_CONTROL_PWM_PIN_X_AXIS                             MACRO_EXPAND(BOAP_GPIO_NUM, BOAP_CONTROL_PWM_PIN_X_AXIS_NUM)
-#define BOAP_CONTROL_PWM_PIN_Y_AXIS                             MACRO_EXPAND(BOAP_GPIO_NUM, BOAP_CONTROL_PWM_PIN_Y_AXIS_NUM)
+#define BOAP_CONTROL_PWM_PIN_X_AXIS                             MACRO_EXPAND(BOAP_CONTROL_GPIO_NUM, BOAP_CONTROL_PWM_PIN_X_AXIS_NUM)
+#define BOAP_CONTROL_PWM_PIN_Y_AXIS                             MACRO_EXPAND(BOAP_CONTROL_GPIO_NUM, BOAP_CONTROL_PWM_PIN_Y_AXIS_NUM)
 #define BOAP_CONTROL_PWM_MIN_DUTY_CYCLE_US                      500
 #define BOAP_CONTROL_PWM_MAX_DUTY_CYCLE_US                      2500
 #define BOAP_CONTROL_SERVO_MAX_ANGLE_DEG                        90
@@ -100,7 +103,7 @@ PUBLIC EBoapRet BoapControlInit(void) {
     EBoapRet status = EBoapRet_Ok;
 
     BoapControlSetNewSamplingPeriod(BOAP_CONTROL_SAMPLING_PERIOD_DEFAULT);
-    BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): Initialization started. Default sampling period is %f (no touch tolerance is %d ms or %d samples)", \
+    BoapLogPrint(EBoapLogSeverityLevel_Info, "%s(): Initialization started. Default sampling period is %f (no touch tolerance is %d ms or %ld samples)", \
         __FUNCTION__, s_samplingPeriod, BOAP_CONTROL_NO_TOUCH_TOLERANCE_MS, s_noTouchToleranceSamples);
 
     /* Register event handlers */
@@ -741,12 +744,12 @@ PRIVATE void BoapControlHandleSetFilterOrderReq(SBoapAcpMsg * request) {
             BoapFilterDestroy(s_stateContexts[reqPayload->AxisId].Filter);
             /* Set the new filter in place */
             s_stateContexts[reqPayload->AxisId].Filter = newFilter;
-            BoapLogPrint(EBoapLogSeverityLevel_Info, "Successfully changed %s filter order from %u to %u",
+            BoapLogPrint(EBoapLogSeverityLevel_Info, "Successfully changed %s filter order from %lu to %lu",
                 BOAP_AXIS_NAME(reqPayload->AxisId), oldFilterOrder, newFilterOrder);
 
         } else {
 
-            BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to instantiate a new filter object of order %u for the %s. Filter remains of order %u",
+            BoapLogPrint(EBoapLogSeverityLevel_Error, "Failed to instantiate a new filter object of order %lu for the %s. Filter remains of order %lu",
                 reqPayload->FilterOrder, BOAP_AXIS_NAME(reqPayload->AxisId), oldFilterOrder);
             status = EBoapRet_Error;
         }

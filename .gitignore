@@ -12,3 +12,6 @@ doc/*
 !doc/device0.png
 !doc/device1.png
 !doc/kinematics.png
+
+# Ignore sdkconfigs
+sdkconfig

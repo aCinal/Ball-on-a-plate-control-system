@@ -12,7 +12,6 @@
 #include <assert.h>
 #include <math.h>
 #include <esp_compiler.h>
-#include <driver/gpio.h>
 #include <freertos/FreeRTOS.h>
 
 /** @brief 64-bit unsigned type */
@@ -120,9 +119,6 @@ typedef enum EBoapAxis {
 
 /** @brief Security macro checking whether the axis identifier is valid */
 #define BOAP_AXIS_VALID(axis)               ( EBoapAxis_X == (axis) || EBoapAxis_Y == (axis) )
-
-/** @brief Mapping of plain integer GPIO number to symbolic name (preprocessor token) */
-#define BOAP_GPIO_NUM(GPIO_NUM)             GPIO_NUM_##GPIO_NUM
 
 /** @brief Memory barrier */
 #define MEMORY_BARRIER()                    __sync_synchronize()

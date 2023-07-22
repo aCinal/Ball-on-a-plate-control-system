@@ -1,6 +1,6 @@
 idf_component_register(SRCS "touchscreen_tuner.c"
                        INCLUDE_DIRS "../../../common/include"
-                       REQUIRES boap_touchscreen boap_log)
+                       PRIV_REQUIRES boap_touchscreen boap_log driver)
 
 # Define touchscreen config
 target_compile_definitions(${COMPONENT_LIB}

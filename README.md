@@ -29,7 +29,7 @@ The PID tuning parameters get initialized to all zeroes for both axes (see e.g. 
 
 ## Deployment
 
-1. Clone the `https://github.com/espressif/esp-idf` repository
+1. Clone the `https://github.com/espressif/esp-idf` repository (see compatibility notice at the bottom)
 
 ```bash
 git clone https://github.com/espressif/esp-idf
@@ -80,3 +80,9 @@ Generate source code documentation
 cd doc/
 doxygen
 ```
+
+---
+
+## Compatibility
+
+The project is compatible with `ESP-IDF v5.2`.

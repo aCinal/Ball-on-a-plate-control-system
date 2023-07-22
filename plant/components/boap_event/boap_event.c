@@ -210,11 +210,11 @@ PRIVATE void BoapEventDispatch(SBoapEvent * event) {
 
         } else {
 
-            BoapLogPrint(EBoapLogSeverityLevel_Warning, "No handler registered for event with ID %d", event->eventId);
+            BoapLogPrint(EBoapLogSeverityLevel_Warning, "No handler registered for event with ID %ld", event->eventId);
         }
 
     } else {
 
-        BoapLogPrint(EBoapLogSeverityLevel_Warning, "Invalid event ID: %d", event->eventId);
+        BoapLogPrint(EBoapLogSeverityLevel_Warning, "Invalid event ID: %ld", event->eventId);
     }
 }

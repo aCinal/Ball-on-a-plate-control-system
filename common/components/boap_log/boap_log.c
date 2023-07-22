@@ -60,7 +60,7 @@ PUBLIC void BoapLogPrint(EBoapLogSeverityLevel severityLevel, const char * forma
         char trailer[BOAP_LOG_TRAILER_SIZE + 1U];
 
         /* Write the header */
-        (void) snprintf(header, sizeof(header), "<%010d> %s (%s): ", xTaskGetTickCount(), s_severityTags[severityLevel], pcTaskGetName(NULL));
+        (void) snprintf(header, sizeof(header), "<%010ld> %s (%s): ", xTaskGetTickCount(), s_severityTags[severityLevel], pcTaskGetName(NULL));
 
         /* Format the payload */
         va_list ap;

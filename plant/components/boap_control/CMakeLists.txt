@@ -1,14 +1,16 @@
 idf_component_register(SRCS "boap_control.c"
                        INCLUDE_DIRS "."
                        PRIV_INCLUDE_DIRS "../../../common/include" "../../include"
-                       REQUIRES boap_touchscreen
-                                boap_pid
-                                boap_filter
-                                boap_servo
-                                boap_log
-                                boap_event
-                                boap_acp
-                                boap_stats)
+                       PRIV_REQUIRES boap_touchscreen
+                                     boap_pid
+                                     boap_filter
+                                     boap_servo
+                                     boap_log
+                                     boap_event
+                                     boap_acp
+                                     boap_stats
+                                     driver
+                                     esp_timer)
 
 # Define touchscreen config
 target_compile_definitions(${COMPONENT_LIB}

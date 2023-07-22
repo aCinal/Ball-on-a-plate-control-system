@@ -8,7 +8,6 @@
 #include <boap_common.h>
 #include <boap_mem.h>
 #include <hal/adc_hal.h>
-#include <hal/adc_hal_conf.h>
 #include <driver/adc.h>
 #include <driver/gpio.h>
 #include <driver/rtc_io.h>
@@ -34,6 +33,9 @@ struct SBoapTouchscreen {
     u32 Multisampling;
     SBoapTouchscreenAxisContext AxisContexts[2];
 };
+
+PRIVATE u16 BoapTouchscreenReadAdc(adc_channel_t adcChannel, u32 multisampling);
+PRIVATE u32 BoapTouchscreenAdcConvert(adc_channel_t adcChannel);
 
 /**
  * @brief Create a touchscreen object instance
@@ -92,14 +94,12 @@ PUBLIC SBoapTouchscreen * BoapTouchscreenCreate(r32 xDim, r32 yDim,
         handle->Multisampling = multisampling;
 
         /* Initialize the ADC */
-        adc_hal_rtc_set_output_format(ADC_NUM_1, ADC_WIDTH_BIT_12);
-        adc_hal_set_controller(ADC_NUM_1, ADC_CTRL_RTC);
-        adc_hal_rtc_output_invert(ADC_NUM_1, SOC_ADC1_DATA_INVERT_DEFAULT);
-        adc_hal_set_sar_clk_div(ADC_NUM_1, SOC_ADC_SAR_CLK_DIV_DEFAULT(ADC_NUM_1));
-        adc_hal_hall_disable();
-        adc_hal_amp_disable();
-        adc_hal_set_atten(ADC_NUM_1, xAdcChannel, ADC_ATTEN_DB_11);
-        adc_hal_set_atten(ADC_NUM_1, yAdcChannel, ADC_ATTEN_DB_11);
+        adc_oneshot_ll_set_output_bits(ADC_UNIT_1, ADC_BITWIDTH_12);
+        adc_ll_set_controller(ADC_UNIT_1, ADC_LL_CTRL_RTC);
+        adc_oneshot_ll_output_invert(ADC_UNIT_1, ADC_LL_DATA_INVERT_DEFAULT(ADC_UNIT_1));
+        adc_ll_set_sar_clk_div(ADC_UNIT_1, ADC_LL_SAR_CLK_DIV_DEFAULT(ADC_UNIT_1));
+        adc_ll_hall_disable();
+        adc_ll_amp_disable();
 
         /* Permanently pull the GND pins low as they will be pulled down even when used as high impedance inputs */
         (void) gpio_set_pull_mode(handle->AxisContexts[EBoapAxis_X].GndPin, GPIO_PULLDOWN_ONLY);
@@ -122,7 +122,6 @@ PUBLIC SBoapTouchscreenReading BoapTouchscreenRead(SBoapTouchscreen * handle, EB
     gpio_num_t gndPin = handle->AxisContexts[axis].GndPin;
     gpio_num_t openPin = handle->AxisContexts[axis].OpenPin;
     adc_channel_t adcChannel = handle->AxisContexts[axis].AdcChannel;
-    int runningSum = 0;
     u16 measuredAdcValue;
     SBoapTouchscreenReading reading;
 
@@ -131,7 +130,7 @@ PUBLIC SBoapTouchscreenReading BoapTouchscreenRead(SBoapTouchscreen * handle, EB
     (void) gpio_set_level(gndPin, 0);
 
     /* Initialize the ADC pin */
-    (void) adc_gpio_init(ADC_UNIT_1, adcChannel);
+    (void) adc1_config_channel_atten(adcChannel, ADC_ATTEN_DB_11);
 
     /* Set the open pin to high impedance */
     (void) gpio_set_direction(openPin, GPIO_MODE_DEF_INPUT);
@@ -144,18 +143,10 @@ PUBLIC SBoapTouchscreenReading BoapTouchscreenRead(SBoapTouchscreen * handle, EB
     /* Wait for the voltages to stabilize */
     BOAP_TOUCHSCREEN_BUSY_WAIT_FOR_STEADY_STATE();
 
-    /* Run the conversion */
-    for (u32 i = 0; i < handle->Multisampling; i++) {
-
-        int temp;
-        ASSERT(ESP_OK == adc_hal_convert(ADC_NUM_1, adcChannel, &temp), "ADC conversion must not fail");
-        runningSum += temp;
-    }
+    measuredAdcValue = BoapTouchscreenReadAdc(adcChannel, handle->Multisampling);
 
     /* Deinitialize the ADC pin */
     (void) rtc_gpio_deinit(adcPin);
-
-    measuredAdcValue = (u16)(runningSum / handle->Multisampling);
 
     reading.Position = 0.0f;
     reading.RawAdc = BOAP_TOUCHSCREEN_INVALID_READING_ADC;
@@ -191,4 +182,32 @@ PUBLIC void BoapTouchscreenDestroy(SBoapTouchscreen * handle) {
 
     /* Free the allocated memory */
     BoapMemUnref(handle);
+}
+
+PRIVATE u16 BoapTouchscreenReadAdc(adc_channel_t adcChannel, u32 multisampling) {
+
+    /* adc_hal_convert used to be part of a public interface, but those halcyon days
+     * are over and now we must make do ourselves, since all APIs exposed by ESP-IDF
+     * use locking internally which is a no-can-do on the real-time run-to-completion
+     * core 1. */
+    u32 runningSum = 0;
+
+    /* Run the conversion */
+    for (u32 i = 0; i < multisampling; i++) {
+
+        runningSum += BoapTouchscreenAdcConvert(adcChannel);
+    }
+    return (u16)(runningSum / multisampling);
+}
+
+PRIVATE u32 BoapTouchscreenAdcConvert(adc_channel_t adcChannel) {
+
+    adc_oneshot_ll_clear_event(ADC_LL_EVENT_ADC1_ONESHOT_DONE);
+    adc_oneshot_ll_enable(ADC_UNIT_1);
+    adc_oneshot_ll_set_channel(ADC_UNIT_1, adcChannel);
+    adc_oneshot_ll_start(ADC_UNIT_1);
+    while (adc_oneshot_ll_get_event(ADC_LL_EVENT_ADC1_ONESHOT_DONE) != true) {
+        ;
+    }
+    return adc_oneshot_ll_get_raw_result(ADC_UNIT_1);
 }

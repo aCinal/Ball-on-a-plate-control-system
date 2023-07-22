@@ -1,4 +1,4 @@
 idf_component_register(SRCS "boap_stats.c"
                        INCLUDE_DIRS "."
                        PRIV_INCLUDE_DIRS "../../../common/include"
-                       REQUIRES boap_log)
+                       PRIV_REQUIRES boap_log)

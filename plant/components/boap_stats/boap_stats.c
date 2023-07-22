@@ -84,7 +84,7 @@ PRIVATE void BoapStatsThreadEntryPoint(void * arg) {
         vTaskDelay(BOAP_STATS_THREAD_DELAY_TIME);
 
         /* Upon wake up - collect and log the statistics */
-        BoapLogPrint(EBoapLogSeverityLevel_Info, "ARXD=%u, ATXD=%u, AF=%u, ED=%u, EQS=%u, LMT=%u, LQS=%u, STFS=%u",
+        BoapLogPrint(EBoapLogSeverityLevel_Info, "ARXD=%lu, ATXD=%lu, AF=%lu, ED=%lu, EQS=%lu, LMT=%lu, LQS=%lu, STFS=%lu",
                      g_boapStatsTable.AcpRxMessagesDropped,
                      g_boapStatsTable.AcpTxMessagesDropped,
                      g_boapStatsTable.AllocationFailures,

@@ -61,7 +61,7 @@ PRIVATE EBoapRet BoapAcpWiFiInit(void);
 PRIVATE EBoapRet BoapAcpEspNowInit(void);
 PRIVATE void BoapAcpWiFiDeinit(void);
 PRIVATE void BoapAcpEspNowDeinit(void);
-PRIVATE void BoapAcpEspNowReceiveCallback(const u8 * macAddr, const u8 * data, i32 dataLen);
+PRIVATE void BoapAcpEspNowReceiveCallback(const esp_now_recv_info_t * espNowInfo, const u8 * data, int dataLen);
 PRIVATE void BoapAcpEspNowSendCallback(const u8 * macAddr, esp_now_send_status_t status);
 PRIVATE TBoapAcpNodeId BoapAcpMacAddrToNodeId(const u8 * macAddr);
 PRIVATE void BoapAcpGatewayThreadEntryPoint(void * arg);
@@ -566,7 +566,9 @@ PRIVATE void BoapAcpEspNowDeinit(void) {
     (void) esp_now_deinit();
 }
 
-PRIVATE void BoapAcpEspNowReceiveCallback(const u8 * macAddr, const u8 * data, i32 dataLen) {
+PRIVATE void BoapAcpEspNowReceiveCallback(const esp_now_recv_info_t * espNowInfo, const u8 * data, int dataLen) {
+
+    (void) espNowInfo;
 
     EBoapRet status = EBoapRet_Ok;
     SBoapAcpMsg * msg = NULL;
